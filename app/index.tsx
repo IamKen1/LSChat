@@ -132,7 +132,7 @@ export default function Index() {
                 shadowOffset: { width: 2, height: 2 },
                 shadowOpacity: 0.5, shadowRadius: 3
               }}
-            >LS Chat</Text>
+            >LS Chats</Text>
             <Text className="text-lg text-orange-500">Lemon Square Chat App</Text>
           </Animated.View>
 
