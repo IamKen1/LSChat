@@ -121,14 +121,19 @@ android {
         }
         pickFirst 'res/mipmap-hdpi/ic_launcher.png'
         pickFirst 'res/mipmap-hdpi/ic_launcher_round.png'
+        pickFirst 'res/mipmap-hdpi/ic_launcher_foreground.png'
         pickFirst 'res/mipmap-mdpi/ic_launcher.png'
         pickFirst 'res/mipmap-mdpi/ic_launcher_round.png'
+        pickFirst 'res/mipmap-mdpi/ic_launcher_foreground.png'
         pickFirst 'res/mipmap-xhdpi/ic_launcher.png'
         pickFirst 'res/mipmap-xhdpi/ic_launcher_round.png'
+        pickFirst 'res/mipmap-xhdpi/ic_launcher_foreground.png'
         pickFirst 'res/mipmap-xxhdpi/ic_launcher.png'
         pickFirst 'res/mipmap-xxhdpi/ic_launcher_round.png'
+        pickFirst 'res/mipmap-xxhdpi/ic_launcher_foreground.png'
         pickFirst 'res/mipmap-xxxhdpi/ic_launcher.png'
         pickFirst 'res/mipmap-xxxhdpi/ic_launcher_round.png'
+        pickFirst 'res/mipmap-xxxhdpi/ic_launcher_foreground.png'
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
