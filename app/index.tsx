@@ -204,7 +204,7 @@ export default function Index() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => Alert.alert('', 'Please do not forget your password!')}
+                onPress={() => router.push('/forgot-password')}
                 activeOpacity={0.7}
                 disabled={isLoggingIn}
               >
