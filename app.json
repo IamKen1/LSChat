@@ -21,7 +21,11 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
-     
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "icon": "./assets/icon.png",
       "permissions": [
         "android.permission.CAMERA"
       ],
