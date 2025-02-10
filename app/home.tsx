@@ -283,11 +283,12 @@ const HomeScreen = React.memo(() => {
               const allMessages = await Promise.all(messagePromises);
               const updatedPortals = savedPortals.map((portal: any, index: number) => {
                 const messageData = allMessages[index];
-                const lastMessage = messageData.length > 0 ? messageData[0].message : 'No messages yet';
-                const lastMessageTime = messageData.length > 0 ? messageData[0].created_at : '';
-                const lastMessageId = messageData.length > 0 ? messageData[0].id : null;
+                const lastMessage = messageData.length > 0 ? messageData[messageData.length - 1].message : 'No messages yet';             
+                   const lastMessageTime = messageData.length > 0 ? messageData[messageData.length - 1].created_at : '';
+                const lastMessageId = messageData.length > 0 ? messageData[messageData.length - 1].id : null;
                 const unreadCount = messageData.filter((msg: any) => msg.is_read === 0).length;
                 const isNewMessage = unreadCount > 0;
+            
                 if (notificationPermission && lastMessageId && isNewMessage && !notifiedMessageIds.has(lastMessageId)) {
                   Notifications.scheduleNotificationAsync({
                     content: {

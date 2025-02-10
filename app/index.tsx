@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config';
-
+import { checkForUpdates } from "@/src/utils/updateNotifier";
 // Main login screen component
 export default function Index() {
   const router = useRouter();
@@ -23,6 +23,11 @@ export default function Index() {
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   // Initial setup and animations
+
+  useEffect(() => {
+    checkForUpdates();
+  }, []);
+
   useEffect(() => {
     console.log(API_BASE_URL);
     checkSession();
@@ -141,7 +146,7 @@ export default function Index() {
                     shadowOffset: { width: 2, height: 2 },
                     shadowOpacity: 0.5, shadowRadius: 3
                   }}
-                >LS Chats</Text>
+                >LS Chat</Text>
                 <Text className="text-lg text-orange-500">Lemon Square Chat App</Text>
               </Animated.View>
 
@@ -222,6 +227,7 @@ export default function Index() {
                 </View>
 
                 {/* Login button */}
+                <View className="flex-row justify-center items-center mt-4">
                 <TouchableOpacity
                   className="bg-orange-400 mt-6 h-14 rounded-xl justify-center items-center shadow-lg w-3/5 top-2"
                   onPress={handleLogin}
@@ -234,6 +240,7 @@ export default function Index() {
                     <Text className="text-white text-lg font-bold">Login</Text>
                   )}
                 </TouchableOpacity>
+                </View>
               </Animated.View>
             </Animated.View>
 
