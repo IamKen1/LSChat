@@ -27,6 +27,7 @@
       },
       "icon": "./assets/icon.png",
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.CAMERA"
       ],
       "runtimeVersion": "1.0.0",
@@ -84,7 +85,7 @@
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/9340eb4d-3b6d-4047-a367-7e64edfd4494",
+      "url": "https://u.expo.dev/e9631479-dfc2-48a9-a210-612f5d595e98",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
