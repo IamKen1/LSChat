@@ -56,6 +56,10 @@ export default function SignUp() {
         Alert.alert('Error', 'Please enter a valid email address');
         return false;
       }
+      if (!email.trim()) {
+        Alert.alert('Error', 'Email is required');
+        return false;
+      }
     }
     if (!mobileNumber.trim()) {
       Alert.alert('Error', 'Mobile number is required');
@@ -257,7 +261,7 @@ export default function SignUp() {
               <MaterialCommunityIcons name="email-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Email (Optional)"
+                placeholder="Email"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#95A5A6"
