@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "icon": "./assets/icon.png",
+      "icon": "./assets/images/mosh-icon.png",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.CAMERA"
