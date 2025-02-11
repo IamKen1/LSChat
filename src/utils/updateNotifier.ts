@@ -7,13 +7,40 @@ export const checkForUpdates = async () => {
     if (update.isAvailable) {
       Alert.alert(
         'Update Available',
-        'A new version is available. The app will now update.',
-        [{ text: 'OK' }]
+        'A new version of the app is available. Would you like to update now?',
+        [
+          {
+            text: 'Update',
+            onPress: async () => {
+              try {
+                await Updates.fetchUpdateAsync();
+                Alert.alert(
+                  'Success',
+                  'Update downloaded. The app will now restart.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => Updates.reloadAsync()
+                    }
+                  ]
+                );
+              } catch (error) {
+                Alert.alert(
+                  'Error',
+                  'Failed to download update. Please try again later.'
+                );
+              }
+            }
+          },
+          {
+            text: 'Later',
+            style: 'cancel'
+          }
+        ]
       );
-      await Updates.fetchUpdateAsync();
-      await Updates.reloadAsync(); 
     }
   } catch (error) {
+    console.log('no update');
 
   }
 };

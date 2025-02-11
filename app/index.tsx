@@ -25,7 +25,9 @@ export default function Index() {
   // Initial setup and animations
 
   useEffect(() => {
-    checkForUpdates();
+    if (checkForUpdates) {
+      checkForUpdates();
+    }
   }, []);
 
   useEffect(() => {

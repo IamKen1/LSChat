@@ -121,7 +121,7 @@ export default function SignUp() {
       if (response.ok && data.message === "Record created successfully") {
         Alert.alert(
           '✨ Success!',
-          'Your account has been created successfully. Welcome to MOSH!',
+          'Your account has been created successfully. Welcome to LS Chat!',
           [{ text: 'Continue', style: 'default', onPress: () => router.replace('/') }],
           { cancelable: false }
         );
