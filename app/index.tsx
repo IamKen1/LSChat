@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView,ScrollView, Platform, Text, View, TextInput, TouchableOpacity, Pressable, Alert, Animated, ImageBackground, Image, ActivityIndicator } from "react-native";
+
 import { KeyboardAvoidingView,ScrollView, Platform, Text, View, TextInput, TouchableOpacity, Pressable, Alert, Animated, ImageBackground, Image, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -139,9 +139,6 @@ export default function Index() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
       keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
       <ScrollView 
         contentContainerStyle={{ flexGrow: 1 }}
@@ -168,13 +165,6 @@ export default function Index() {
                   </View>
                 </Animated.View>
 
-                <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
-                  {error ? (
-                    <View className="bg-red-100/90 p-4 rounded-xl flex-row items-center  mb-4">
-                      <Ionicons name="alert-circle" size={24} color="#ef4444" />
-                      <Text className="text-red-600 ml-3 flex-1">{error}</Text>
-                    </View>
-                  ) : null}
                 <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
                   {error ? (
                     <View className="bg-red-100/90 p-4 rounded-xl flex-row items-center  mb-4">
@@ -265,22 +255,6 @@ export default function Index() {
                   </View>
                 </Animated.View>
               </Animated.View>
-                  <View className="flex-row justify-center items-center mt-4">
-                    <TouchableOpacity
-                      className="bg-orange-400 mt-6 h-14 rounded-xl justify-center items-center shadow-md w-3/5 top-2"
-                      onPress={handleLogin}
-                      activeOpacity={0.7}
-                      disabled={isLoggingIn}
-                    >
-                      {isLoggingIn ? (
-                        <ActivityIndicator size="small" color="white" />
-                      ) : (
-                        <Text className="text-white text-lg font-bold">Login</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </Animated.View>
 
               <Animated.View
                 className="flex-row justify-center items-center py-8"
@@ -295,24 +269,7 @@ export default function Index() {
               <View className="items-center pb-3">
                 <Text className="text-white/70 text-sm">Powered by ICTD</Text>
               </View>
-
-              <Animated.View
-                className="flex-row justify-center items-center py-8"
-                style={{ opacity: fadeAnim }}
-              >
-                <Text className="text-white/90 text-base">Don't have an account? </Text>
-                <TouchableOpacity onPress={() => router.push('/signup')} className="active:opacity-70" disabled={isLoggingIn}>
-                  <Text className="text-white font-extrabold text-base">Sign Up</Text>
-                </TouchableOpacity>
-              </Animated.View>
-
-              <View className="items-center pb-3">
-                <Text className="text-white/70 text-sm">Powered by ICTD</Text>
-              </View>
-
             </View>
-          </ImageBackground>
-        </View>
           </ImageBackground>
         </View>
       </ScrollView>
