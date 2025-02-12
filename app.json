@@ -88,8 +88,8 @@
       "url": "https://u.expo.dev/e9631479-dfc2-48a9-a210-612f5d595e98",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-       "runtimeVersion": "1.0.0"
+      "fallbackToCacheTimeout": 0
+    
     },
     "owner": "kbgutierrez"
   }
