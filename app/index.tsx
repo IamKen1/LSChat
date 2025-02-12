@@ -145,7 +145,7 @@ export default function Index() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 bg-white">
-          <ImageBackground source={require('../assets/background/bg-7.jpg')} className="flex-1 opacity-50">
+          <ImageBackground source={require('../assets/background/bg-7.jpg')} className="flex-1">
             <View className="flex-1 p-8">
               <Animated.View className="flex-1 justify-center mt-[50]" style={{ opacity: fadeAnim }}>
                 <Animated.View className="items-center mb-8" style={{ transform: [{ scale: scaleAnim }] }}>
