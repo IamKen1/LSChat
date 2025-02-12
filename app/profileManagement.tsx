@@ -109,7 +109,7 @@ const ProfileManagement = () => {833
         <SafeAreaView className="flex-1 bg-white">
           <ScrollView className="flex-1">
             {/* Header section */}
-             <LinearGradient colors={['#f47a04', '#c66203']} className="p-4 shadow-lg">
+             <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 shadow-lg">
               <Text className="text-white text-2xl font-bold text-center">Profile Management</Text>
             </LinearGradient>
             {/* Form inputs */}
@@ -191,7 +191,7 @@ const ProfileManagement = () => {833
               />
               {/* Update button */}
               <TouchableOpacity 
-                className={`p-4 rounded-lg items-center mt-2.5 ${isLoading ? 'bg-gray-400' : 'bg-[#c66203]'}`}
+                className={`p-4 rounded-lg items-center mt-2.5 ${isLoading ? 'bg-gray-400' : 'bg-[#6B21A8]'}`}
                 onPress={handleUpdateProfile}
                 disabled={isLoading}
               >

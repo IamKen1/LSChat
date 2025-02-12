@@ -308,7 +308,7 @@ export default function AccountManager() {
   return (
     <MenuProvider>
       <SafeAreaView className="flex-1 bg-slate-50">
-        <LinearGradient colors={['#f47a04', '#c66203']} className="p-4 ">
+        <LinearGradient colors={['#6B21A8', '#3B0764']}  className="p-4 ">
           <Text className="text-white text-xl font-bold text-center">Account Manager</Text>
         </LinearGradient>
         <View className="">
@@ -322,7 +322,7 @@ export default function AccountManager() {
                 placeholderTextColor="#94A3B8"
               />
               <TouchableOpacity
-                className="bg-[#c66203] p-4  shadow-lg"
+                className="bg-[#6B21A8] p-4  shadow-lg"
                 onPress={addPortal}
               >
                 <Ionicons name="add" size={24} color="white" />

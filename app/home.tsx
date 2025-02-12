@@ -28,12 +28,12 @@ interface HeaderProps {
 
 // Renders the app header with user info and search functionality
 const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, setSearchQuery, unreadMessages, onNotificationPress }) => (
-  <LinearGradient colors={['#f47a04', '#c66203']} className="p-4 shadow-lg">
+  <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 shadow-lg">
     <View className="flex-col">
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center gap-4">
           <TouchableOpacity onPress={toggleMenu} className="w-12 h-12 rounded-full bg-white/90 justify-center items-center shadow-sm">
-            <Text className="text-[#c66203] text-xl font-bold" style={{ fontFamily: 'System' }}>{firstName[0]}</Text>
+            <Text className="text-[#3B0764] text-xl font-bold" style={{ fontFamily: 'System' }}>{firstName[0]}</Text>
           </TouchableOpacity>
           <View className="flex-col items-start flex-1">
             <Text className="text-sm text-white/80 tracking-wider font-medium shadow-sm-">Welcome,</Text>
@@ -43,7 +43,7 @@ const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, se
             className="w-11 h-11 rounded-full bg-white/90 justify-center items-center shadow-sm"
             onPress={onNotificationPress}
           >
-            <Icon name="notifications" size={22} color="#c66203" />
+            <Icon name="notifications" size={22} color="#3B0764" />
             {unreadMessages > 0 && (
               <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-6 h-6 justify-center items-center border-2 border-white">
                 <Text className="text-white text-xs font-bold">{unreadMessages}</Text>
@@ -57,7 +57,7 @@ const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, se
           className="flex-row items-center bg-white/90 rounded-full px-4 h-11 shadow-sm"
           onPress={() => Alert.alert('Coming Soon!', 'Search feature coming soon!')}
         >
-          <Icon name="search" size={22} color="#c66203" className="mr-2" />
+          <Icon name="search" size={22} color="#3B0764" className="mr-2" />
           <Text className="flex-1 text-sm text-gray-600 font-medium">Search messages...</Text>
         </TouchableOpacity>
       </View>
@@ -78,7 +78,7 @@ const TabBar = React.memo<TabBarProps>(({ activeTab, setActiveTab, showComingSoo
       className={`flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2 ${activeTab === 'Chats' ? 'bg-gray-200 shadow-sm' : ''}`}
       onPress={() => setActiveTab('Chats')}
     >
-      <Icon name="chat" size={24} color={activeTab === 'Chats' ? '#c66203' : '#666666'} />
+      <Icon name="chat" size={24} color={activeTab === 'Chats' ? '#6B21A8' : '#666666'} />
       <Text className={`text-sm font-medium ${activeTab === 'Chats' ? 'text-dark' : 'text-gray-500'}`}>Chats</Text>
     </TouchableOpacity>
     <TouchableOpacity
@@ -121,7 +121,7 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, handleChatPress }) => 
         className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
         onPress={() => handleChatPress(group.token)}
       >
-        <View className="w-[50px] h-[50px] rounded-full bg-[#c66203] justify-center items-center mr-3">
+        <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
           <Text className="text-white text-xl font-bold">{group.name.split(' ').length > 1 ? group.name.split(' ').map(word => word[0]).slice(0, 2).join('') : group.name[0]}</Text>
         </View>
         <View className="flex-1">
@@ -269,7 +269,7 @@ const HomeScreen = React.memo(() => {
 
               const allPortals = Array.isArray(data.user) ? data.user : [data.user];
               const savedPortals = allPortals.filter((portal: any) => portal.status === 'active');
-            
+
               // Fetch all messages in parallel
               const messagePromises = savedPortals.map((portal: any) =>
                 fetch(`${API_BASE_URL}/api/messages/${portal.channel}`)
@@ -283,12 +283,12 @@ const HomeScreen = React.memo(() => {
               const allMessages = await Promise.all(messagePromises);
               const updatedPortals = savedPortals.map((portal: any, index: number) => {
                 const messageData = allMessages[index];
-                const lastMessage = messageData.length > 0 ? messageData[messageData.length - 1].message : 'No messages yet';             
+                const lastMessage = messageData.length > 0 ? messageData[messageData.length - 1].message : 'No messages yet';
                 const lastMessageTime = messageData.length > 0 ? messageData[messageData.length - 1].created_at : '';
                 const lastMessageId = messageData.length > 0 ? messageData[messageData.length - 1].id : null;
                 const unreadCount = messageData.filter((msg: any) => msg.is_read === 0).length;
                 const isNewMessage = unreadCount > 0;
-               
+
                 if (notificationPermission && lastMessageId && isNewMessage && !notifiedMessageIds.has(lastMessageId)) {
                   Notifications.scheduleNotificationAsync({
                     content: {
@@ -495,13 +495,15 @@ const HomeScreen = React.memo(() => {
             activeOpacity={1}
           />
           <View className="absolute bottom-0 left-0 bg-white w-[70%] h-full z-[1000] rounded-tr-3xl">
-            <LinearGradient colors={['#f47a04', '#c66203']} className="p-4 items-center shadow-lg">
+            <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 items-center shadow-lg">
               <View className="items-center mb-2" >
-                <View className="bg-white p-5 rounded-full mb-6 shadow-lg">
-                  <Ionicons name="chatbubbles" size={50} color="#f47a04" />
-                </View>
-                <Text className="text-4xl font-black text-white mb-3 tracking-wider">LS Chat</Text>
-                <Text className="text-lg text-blue-100">Lemon Square Chat App</Text>
+                  <View className="w-64 h-32 rounded-xl overflow-hidden">
+                    <Image
+                      source={require('../assets/logo/ls_chat3.png')}
+                      className="w-full h-full"
+                      resizeMode="contain"
+                    />
+                  </View>
               </View>
             </LinearGradient>
 
@@ -511,7 +513,7 @@ const HomeScreen = React.memo(() => {
                 onPress={navigateProfile}
               >
                 <View className="w-10 h-10 rounded-full bg-indigo-100 items-center justify-center">
-                  <Icon name="account-circle" size={24} color="#c66203" />
+                  <Icon name="account-circle" size={24} color="#6B21A8" />
                 </View>
                 <Text className="ml-4 text-base font-semibold text-gray-800">Profile Management</Text>
               </TouchableOpacity>
@@ -521,7 +523,7 @@ const HomeScreen = React.memo(() => {
                 onPress={navigateToAccount}
               >
                 <View className="w-10 h-10 rounded-full bg-indigo-100 items-center justify-center">
-                  <Icon name="list" size={24} color="#c66203" />
+                  <Icon name="list" size={24} color="#6B21A8" />
                 </View>
                 <Text className="ml-4 text-base font-semibold text-gray-800">Account Manager</Text>
               </TouchableOpacity>
@@ -532,7 +534,7 @@ const HomeScreen = React.memo(() => {
               onPress={handleLogout}
             >
               <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center">
-                <Icon name="logout" size={24} color="#c66203" />
+                <Icon name="logout" size={24} color="#6B21A8" />
               </View>
               <Text className="ml-4 text-base font-semibold text-red-600">Logout</Text>
             </TouchableOpacity>
