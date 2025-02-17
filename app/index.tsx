@@ -2,7 +2,7 @@
 import { KeyboardAvoidingView,ScrollView, Platform, Text, View, TextInput, TouchableOpacity, Pressable, Alert, Animated, ImageBackground, Image, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
+import  { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config';
 import { checkForUpdates } from "@/src/utils/updateNotifier";
@@ -147,12 +147,11 @@ export default function Index() {
         <View className="flex-1 bg-white">
           <ImageBackground source={require('../assets/background/bg-7.jpg')} className="flex-1">
             <View className="flex-1 p-8">
-              <Animated.View className="flex-1 justify-center mt-[50]" style={{ opacity: fadeAnim }}>
-                <Animated.View className="items-center mb-8" style={{ transform: [{ scale: scaleAnim }] }}>
-           
-                  <View className="w-64 h-32 rounded-xl overflow-hidden">
+              <Animated.View className="flex-1 justify-center mt-16" style={{ opacity: fadeAnim }}>
+                <Animated.View className="items-center mb-3" style={{ transform: [{ scale: scaleAnim }] }}>
+                  <View className="w-56 h-56 rounded-xl overflow-hidden">
                     <Image
-                      source={require('../assets/logo/ls_chat3.png')}
+                      source={require('../assets/logo/ls_chat4.png')}
                       className="w-full h-full"
                       resizeMode="contain"
                       style={{
@@ -164,7 +163,6 @@ export default function Index() {
                     />
                   </View>
                 </Animated.View>
-
                 <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
                   {error ? (
                     <View className="bg-red-100/90 p-4 rounded-xl flex-row items-center  mb-4">

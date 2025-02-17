@@ -57,7 +57,7 @@ const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, se
           className="flex-row items-center bg-white/90 rounded-full px-4 h-11 shadow-sm"
           onPress={() => Alert.alert('Coming Soon!', 'Search feature coming soon!')}
         >
-          <Icon name="search" size={22} color="#3B0764" className="mr-2" />
+          <Icon name="search" size={22} color="#3B0764" />
           <Text className="flex-1 text-sm text-gray-600 font-medium">Search messages...</Text>
         </TouchableOpacity>
       </View>
@@ -487,6 +487,9 @@ const HomeScreen = React.memo(() => {
         chatGroups={chatGroups}
         handleChatPress={handleChatPress}
       />
+      <View className="items-center pb-3">
+        <Text className="text-black/70 text-sm">Powered by ICTD</Text>
+      </View>
       {menuVisible && (
         <>
           <TouchableOpacity
@@ -497,13 +500,13 @@ const HomeScreen = React.memo(() => {
           <View className="absolute bottom-0 left-0 bg-white w-[70%] h-full z-[1000] rounded-tr-3xl">
             <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 items-center shadow-lg">
               <View className="items-center mb-2" >
-                  <View className="w-64 h-32 rounded-xl overflow-hidden">
-                    <Image
-                      source={require('../assets/logo/ls_chat3.png')}
-                      className="w-full h-full"
-                      resizeMode="contain"
-                    />
-                  </View>
+                <View className="w-64 h-32 rounded-xl overflow-hidden">
+                  <Image
+                    source={require('../assets/logo/ls_chat4.png')}
+                    className="w-full h-full"
+                    resizeMode="contain"
+                  />
+                </View>
               </View>
             </LinearGradient>
 

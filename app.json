@@ -4,7 +4,7 @@
     "slug": "ls-chat",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/mosh-icon.png",
+    "icon": "./assets/logo/ls_chat4.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,6 +15,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDisplayName": "LS Chat"
       },
+      "buildNumber": "1",
       "runtimeVersion": {
         "policy": "appVersion"
       }
@@ -22,15 +23,15 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0a0d54"
       },
-      "icon": "./assets/images/mosh-icon.png",
+      "icon": "./assets/images/adaptive-icon.png",
       "permissions": [
-        "android.permission.CAMERA",
         "android.permission.CAMERA"
       ],
       "runtimeVersion": "1.0.0",
+      "versionCode": 1,
       "package": "com.kbgutierrez.lschat"
     },
     "web": {
@@ -41,15 +42,18 @@
         "viewport": "width=device-width, initial-scale=1, maximum-scale=1"
       }
     },
+    "cli": {
+      "appVersionSource": "remote"
+    },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/adaptive-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#0a0d54"
         }
       ],
       [
@@ -65,16 +69,29 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/mosh-icon.png",
-          "color": "#ffffff",
+          "icon": "./assets/images/adaptive-icon.png",
+          "color": "#0a0d54",
           "sounds": [
             "./assets/notification_sound.wav"
           ]
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e9631479-dfc2-48a9-a210-612f5d595e98",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "owner": "ls_chat_group",
+    "splash": {
+      "image": "./assets/images/adaptive-icon.png",
+      "backgroundColor": "#8a2be2",
+      "resizeMode": "contain"
     },
     "extra": {
       "router": {
@@ -83,14 +100,6 @@
       "eas": {
         "projectId": "e9631479-dfc2-48a9-a210-612f5d595e98"
       }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/e9631479-dfc2-48a9-a210-612f5d595e98",
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    
-    },
-    "owner": "kbgutierrez"
+    }
   }
 }

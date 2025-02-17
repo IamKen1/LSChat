@@ -34,6 +34,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="myapp"/>
         <data android:scheme="com.kbgutierrez.lschat"/>
+        <data android:scheme="exp+ls-chat"/>
       </intent-filter>
     </activity>
   </application>
