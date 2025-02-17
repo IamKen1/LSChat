@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../config';
+import ContactLists from './contact-lists';
 // Notification configuration
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -89,9 +90,9 @@ const TabBar = React.memo<TabBarProps>(({ activeTab, setActiveTab, showComingSoo
     </TouchableOpacity>
     <TouchableOpacity
       className="flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2"
-      onPress={() => showComingSoonAlert('Contacts')}
+      onPress={() => setActiveTab('Contacts')}
     >
-      <Icon name="contacts" size={24} color="#666666" />
+      <Icon name="contacts" size={24} color={activeTab === 'Contacts' ? '#6B21A8' : '#666666'} />
       <Text className="text-sm font-medium text-gray-500">Contacts</Text>
     </TouchableOpacity>
   </View>
@@ -348,7 +349,6 @@ const HomeScreen = React.memo(() => {
 
   }, [notificationPermission, notifiedMessageIds]);
 
-
   // Navigates to account management screen
   const navigateToAccount = () => {
     setMenuVisible(false);
@@ -405,7 +405,7 @@ const HomeScreen = React.memo(() => {
       console.error('Error logging out:', error);
     }
   };
-
+ 
   // Shows alert for upcoming features
   const showComingSoonAlert = (feature: string) => {
     Alert.alert(
@@ -482,10 +482,14 @@ const HomeScreen = React.memo(() => {
         setActiveTab={setActiveTab}
         showComingSoonAlert={showComingSoonAlert}
       />
-      <ChatList
-        chatGroups={chatGroups}
-        handleChatPress={handleChatPress}
-      />
+      {activeTab === 'Chats' ? (
+        <ChatList
+          chatGroups={chatGroups}
+          handleChatPress={handleChatPress}
+        />
+      ) : activeTab === 'Contacts' ? (
+        <ContactLists />
+      ) : null}
       <View className="items-center pb-3">
         <Text className="text-black/70 text-sm">Powered by ICTD</Text>
       </View>
