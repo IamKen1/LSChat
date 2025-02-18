@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Modal, TextInput } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, FlatList, TouchableOpacity, Modal, TextInput,ScrollView } from 'react-native'
 import { API_BASE_URL } from '@/config'
 
 interface Contact {
@@ -14,20 +14,20 @@ const ContactLists = () => {
     const [searchResults, setSearchResults] = useState<Contact[]>([])
     const [showDropdown, setShowDropdown] = useState(false)
 
-    const contacts: Contact[] = useMemo(() => [
+    const contacts: Contact[] = [
         { id: '1', name: 'Juan Dela Cruz', phone: '+63 917-123-4567' },
         { id: '2', name: 'Maria Santos', phone: '+63 918-234-5678' },
         { id: '3', name: 'Pedro Reyes', phone: '+63 919-345-6789' },
         { id: '4', name: 'Diego Silang', phone: '+63 920-456-7890' },
-    ], [])
+    ]
 
     const searchContacts = async (query: string) => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/search-contacts?search_data=${query}`)
             const data = await response.json()
-            setSearchResults(data.map((item: { first_name: string; last_name: string; user_id: number }) => ({
+            setSearchResults(data.map((item: { first_name: string; last_name: string; user_id: number; mobile_number: string; }) => ({
                 name: `${item.first_name} ${item.last_name}`,
-                phone: '',
+                phone: `${item.mobile_number}`,
                 id: item.user_id.toString()
             })))
             setShowDropdown(true)
@@ -35,28 +35,35 @@ const ContactLists = () => {
             console.error('Error searching contacts:', error)
         }
     }
-
-    const renderContact = useMemo(() => ({ item }: { item: Contact }) => (
+    const renderContact = ({ item }: { item: Contact }) => (
         <TouchableOpacity 
-            className="p-4 border-b border-gray-200"
+            className=" pb-2 mb-1 bg-white shadow-sm  border-b-gray-200"
             onPress={() => showDropdown && handleSelectContact(item)}
         >
-            <Text className="text-lg font-bold mb-1">{item.name}</Text>
-            <Text className="text-base text-gray-600">{item.phone}</Text>
+            <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center">
+                    <View className="w-10 h-10 bg-purple-50 rounded-full items-center justify-center mr-3">
+                        <Text className="text-lg text-purple-800">{item.name.charAt(0)}</Text>
+                    </View>
+                    <View>
+                        <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
+                        <Text className="text-sm text-gray-600 mt-1">{item.phone}</Text>
+                    </View>
+                </View>
+            </View>
         </TouchableOpacity>
-    ), [showDropdown])
-
-    const handleSelectContact = useMemo(() => (contact: Contact) => {
+    )
+    const handleSelectContact = (contact: Contact) => {
         setNewContact(contact)
         setShowDropdown(false)
-    }, [])
+    }
 
-    const closeModal = useMemo(() => () => {
+    const closeModal = () => {
         setModalVisible(false)
         setShowDropdown(false)
         setNewContact({ id: '', name: '', phone: '' })
         setSearchResults([])
-    }, [])
+    }
 
     return (
         <View className="flex-1 bg-white p-4">
@@ -95,15 +102,20 @@ const ContactLists = () => {
                             />
                             {showDropdown && searchResults.length > 0 && (
                                 <View className="absolute top-11 left-0 right-0 max-h-40 border bg-white border-gray-300 rounded-lg overflow-hidden z-50">
-                                    <FlatList
-                                        className="bg-gray-200/30"
-                                        data={searchResults}
-                                        renderItem={renderContact}
-                                        keyExtractor={(_, index) => index.toString()}
-                                        nestedScrollEnabled
-                                    />
-                                </View>
-                            )}
+                                    <ScrollView>
+                                        {searchResults.map((contact, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                onPress={() => handleSelectContact(contact)}
+                                                className="p-3 border-b border-gray-200 hover:bg-gray-100"
+                                            >
+                                                <Text className="text-gray-800">{contact.name}</Text>
+                                                <Text className="text-gray-500 text-sm">{contact.phone}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>                          
+                              )}
                         </View>
                         <View className="flex-row justify-end space-x-4">
                             <TouchableOpacity
