@@ -1,5 +1,5 @@
 import { CameraView, CameraType, useCameraPermissions, Camera } from 'expo-camera';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Text, TouchableOpacity, View, TextInput, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,7 @@ import { Menu, MenuTrigger, MenuOptions, MenuOption, MenuProvider } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../config';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function AccountManager() {
   const [facing, setFacing] = useState<CameraType>('back');
@@ -18,6 +19,17 @@ export default function AccountManager() {
   const [isScanning, setIsScanning] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Create a ref that will always hold the current selectedPortal value.
+  const selectedPortalRef = useRef<number | null>(null);
+
+  // Sync the ref each time selectedPortal changes.
+  useEffect(() => {
+    selectedPortalRef.current = selectedPortal;
+    if (selectedPortal !== null) {
+      console.log('Selected portal updated:', selectedPortal);
+    }
+  }, [selectedPortal]);
 
   // Fetch saved portals from the server
   useEffect(() => {
@@ -74,7 +86,7 @@ export default function AccountManager() {
               const userSessionData = await AsyncStorage.getItem('userSession');
               const statusData = {
                 status: 'active'
-              }
+              };
               if (userSessionData && portals[index].token) {
                 const userData = JSON.parse(userSessionData);
                 const response = await fetch(`${API_BASE_URL}/api/accounts/update/${portals[index].token}/${userData.user.user_id}`, {
@@ -95,7 +107,6 @@ export default function AccountManager() {
                 console.log('data', data);
                 if (data.status) {
                   setRefreshTrigger(prev => prev + 1);
-
                   Alert.alert('Success', data.message || 'Failed to reconnect account');
                 }
               }
@@ -109,24 +120,6 @@ export default function AccountManager() {
       ]
     );
   };
-
-  if (!permission) {
-    return <SafeAreaView />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView className="flex-1 justify-center bg-slate-50">
-        <Text className="text-center pb-2.5 text-slate-700 font-medium">Camera Permission Required</Text>
-        <TouchableOpacity
-          className="mx-4 bg-indigo-600 py-3 rounded-xl shadow-lg"
-          onPress={requestPermission}
-        >
-          <Text className="text-white text-center font-semibold">Grant Permission</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
 
   // Switch between front and back camera
   function toggleCameraFacing() {
@@ -159,7 +152,7 @@ export default function AccountManager() {
               const userSessionData = await AsyncStorage.getItem('userSession');
               const statusData = {
                 status: 'inactive'
-              }
+              };
               if (userSessionData && portals[index].token) {
                 const userData = JSON.parse(userSessionData);
                 const response = await fetch(`${API_BASE_URL}/api/accounts/update/${portals[index].token}/${userData.user.user_id}`, {
@@ -180,7 +173,6 @@ export default function AccountManager() {
 
                 if (data.status) {
                   setRefreshTrigger(prev => prev + 1);
-
                   Alert.alert('Success', data.message || 'Failed to remove account');
                 }
                 console.log('refresh trigger 3', refreshTrigger);
@@ -201,23 +193,43 @@ export default function AccountManager() {
 
   // Handle portal selection for QR scanning
   const handlePortalPress = (index: number) => {
+    console.log('handlePortalPress index', index);
     if (!portals[index].token) {
       setSelectedPortal(index);
       setShowCamera(true);
     }
   };
 
+  // Open image picker to scan a QR code from an image
+  const pickImage = (index: number) => {
+    setSelectedPortal(index);
+    setIsScanning(false);
+
+    ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      quality: 1,
+    }).then(async result => {
+      if (!result.canceled) {
+        const scannedResults = await Camera.scanFromURLAsync(result.assets[0].uri);
+        if (scannedResults.length > 0) {
+          const qrData = scannedResults[0].data;
+          handleQRCodeScanned({ data: qrData }, true);
+        }
+      }
+    });
+  };
+
   // Create new account with scanned QR token
   const createAccount = async (token: string) => {
     try {
       const userSessionData = await AsyncStorage.getItem('userSession');
-
       if (userSessionData) {
         const userData = JSON.parse(userSessionData);
         setUserId(userData.user.user_id);
 
-        const selectedPortalName = portals[selectedPortal!].name;
-
+        const selectedPortalName = portals[selectedPortalRef.current!].name;
+        console.log('selectedPortalName', selectedPortalName);
         const response = await fetch(`${API_BASE_URL}/api/createAccount`, {
           method: 'POST',
           headers: {
@@ -239,29 +251,53 @@ export default function AccountManager() {
     }
   };
 
-  // Process scanned QR code data
-  const handleQRCodeScanned = async ({ data }: { data: string }) => {
-    if (selectedPortal !== null && !isScanning) {
+  // Process scanned QR code data using the selectedPortalRef for the latest portal index
+  const handleQRCodeScanned = ({ data }: { data: string }, fromImagePicker: boolean = false) => {
+    console.log('handleQRCodeScanned SelectedPortal', selectedPortalRef.current);
+    if (selectedPortalRef.current === null) {
+      return; // Early return if selectedPortal is null
+    }
+
+    if (!isScanning) {
       setIsScanning(true);
 
       const isDuplicate = portals.some(portal => portal.token === data);
       if (isDuplicate) {
         Alert.alert('Duplicate Channel', 'This channel has already been added.');
         setShowCamera(false);
-        setSelectedPortal(null);
         setIsScanning(false);
         return;
       }
 
       const updatedPortals = [...portals];
-      updatedPortals[selectedPortal].token = data;
-      setPortals(updatedPortals);
-      await createAccount(data);
-      setShowCamera(false);
-      setSelectedPortal(null);
-      setIsScanning(false);
+      updatedPortals[selectedPortalRef.current].token = data;
+
+      createAccount(data).then(() => {
+        if (!fromImagePicker) {
+          setShowCamera(false);
+        }
+        setIsScanning(false);
+      });
     }
   };
+
+  if (!permission) {
+    return <SafeAreaView />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView className="flex-1 justify-center bg-slate-50">
+        <Text className="text-center pb-2.5 text-slate-700 font-medium">Camera Permission Required</Text>
+        <TouchableOpacity
+          className="mx-4 bg-indigo-600 py-3 rounded-xl shadow-lg"
+          onPress={requestPermission}
+        >
+          <Text className="text-white text-center font-semibold">Grant Permission</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   if (showCamera) {
     return (
@@ -304,11 +340,10 @@ export default function AccountManager() {
       </SafeAreaView>
     );
   }
-
   return (
     <MenuProvider>
       <SafeAreaView className="flex-1 bg-slate-50">
-        <LinearGradient colors={['#6B21A8', '#3B0764']}  className="p-4 ">
+        <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 ">
           <Text className="text-white text-xl font-bold text-center">Account Manager</Text>
         </LinearGradient>
         <View className="">
@@ -357,10 +392,20 @@ export default function AccountManager() {
                           </TouchableOpacity>
                         )
                       ) : (
-                        <TouchableOpacity className="mr-4 bg-indigo-100 p-2 rounded-full"
-                        onPress={() => handlePortalPress(index)}>
-                          <Ionicons name="scan" size={24} color="#4F46E5" />
-                        </TouchableOpacity>
+                        <View className="flex-row">
+                          <TouchableOpacity
+                            className="mr-2 bg-indigo-100 p-2 rounded-full"
+                            onPress={() => handlePortalPress(index)}
+                          >
+                            <Ionicons name="scan" size={24} color="#4F46E5" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            className="mr-4 bg-indigo-100 p-2 rounded-full"
+                            onPress={() => pickImage(index)}
+                          >
+                            <Ionicons name="image" size={24} color="#4F46E5" />
+                          </TouchableOpacity>
+                        </View>
                       )}
                       <Menu>
                         <MenuTrigger>
