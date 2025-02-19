@@ -1,4 +1,4 @@
-import { Text, View, TextInput, TouchableOpacity, ScrollView, Modal, Alert } from "react-native";
+import { Text, View, TextInput, TouchableOpacity, ScrollView, Modal, Alert, Pressable } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import Checkbox from 'expo-checkbox';
@@ -19,8 +19,11 @@ export default function SignUp() {
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   // Loading state for API calls
   const [loading, setLoading] = useState(false);
 
@@ -48,6 +51,10 @@ export default function SignUp() {
     }
     if (password.length < 8) {
       Alert.alert('Error', 'Password must be at least 8 characters long');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return false;
     }
     if (email.trim()) {
@@ -199,7 +206,7 @@ export default function SignUp() {
               <Ionicons name="person-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="First Name"
+                placeholder="First Name *"
                 placeholderTextColor="#95A5A6"
                 value={firstName}
                 onChangeText={setFirstName}
@@ -223,7 +230,7 @@ export default function SignUp() {
               <Ionicons name="person-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Last Name"
+                placeholder="Last Name *"
                 placeholderTextColor="#95A5A6"
                 value={lastName}
                 onChangeText={setLastName}
@@ -235,7 +242,7 @@ export default function SignUp() {
               <MaterialCommunityIcons name="account" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Username"
+                placeholder="Username *"
                 autoCapitalize="none"
                 placeholderTextColor="#95A5A6"
                 value={username}
@@ -248,12 +255,49 @@ export default function SignUp() {
               <Ionicons name="lock-closed-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Password"
-                secureTextEntry
+                placeholder="Password *"
+                secureTextEntry={!showPassword}
                 placeholderTextColor="#95A5A6"
                 value={password}
                 onChangeText={setPassword}
               />
+              <Pressable
+                onPressIn={() => setShowPassword(true)}
+                onPressOut={() => setShowPassword(false)}
+                className="p-2"
+                disabled={loading}
+              >
+                <Ionicons
+                  name={showPassword ? "eye" : "eye-off"}
+                  size={24}
+                  color="#95A5A6"
+                />
+              </Pressable>
+            </View>
+
+            {/* Confirm Password input */}
+            <View className="w-full h-[45px] border-[1.5px] border-[#E0E0E0] rounded-[10px] mb-3 bg-white flex-row items-center px-[15px] shadow-sm">
+              <Ionicons name="lock-closed-outline" size={18} color="#95A5A6" className="mr-2" />
+              <TextInput
+                className="flex-1 text-sm text-[#2C3E50]"
+                placeholder="Confirm Password *"
+                secureTextEntry={!showConfirmPassword}
+                placeholderTextColor="#95A5A6"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <Pressable
+                onPressIn={() => setShowConfirmPassword(true)}
+                onPressOut={() => setShowConfirmPassword(false)}
+                className="p-2"
+                disabled={loading}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye" : "eye-off"}
+                  size={24}
+                  color="#95A5A6"
+                />
+              </Pressable>
             </View>
 
             {/* Email input */}
@@ -261,7 +305,7 @@ export default function SignUp() {
               <MaterialCommunityIcons name="email-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Email"
+                placeholder="Email *"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#95A5A6"
@@ -275,7 +319,7 @@ export default function SignUp() {
               <Ionicons name="phone-portrait-outline" size={18} color="#95A5A6" className="mr-2" />
               <TextInput
                 className="flex-1 text-sm text-[#2C3E50]"
-                placeholder="Mobile Number"
+                placeholder="Mobile Number *"
                 keyboardType="phone-pad"
                 placeholderTextColor="#95A5A6"
                 value={mobileNumber}
