@@ -278,7 +278,7 @@ export default function AccountManager() {
             colors={['rgba(0,0,0,0.7)', 'transparent', 'rgba(0,0,0,0.7)']}
             className="flex-1 justify-center items-center"
           >
-            <View className="w-[75%] h-[75%] border-2 border-transparent relative">
+            <View className="w-[75%] h-[55%] border-2 border-transparent relative">
               <View className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-indigo-400" />
               <View className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-indigo-400" />
               <View className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-indigo-400" />
@@ -357,7 +357,8 @@ export default function AccountManager() {
                           </TouchableOpacity>
                         )
                       ) : (
-                        <TouchableOpacity className="mr-4 bg-indigo-100 p-2 rounded-full">
+                        <TouchableOpacity className="mr-4 bg-indigo-100 p-2 rounded-full"
+                        onPress={() => handlePortalPress(index)}>
                           <Ionicons name="scan" size={24} color="#4F46E5" />
                         </TouchableOpacity>
                       )}
@@ -374,7 +375,7 @@ export default function AccountManager() {
                           <MenuOption onSelect={() => removePortal(index)}>
                             <View className="flex-row items-center p-1">
                               <Ionicons name="flash-off-outline" size={16} color="#EF4444" />
-                              <Text className="ml-3 text-base text-sm font-medium text-red-500">Disconnect</Text>
+                              <Text className="ml-3  text-sm font-medium text-red-500">Disconnect</Text>
                             </View>
                           </MenuOption>
                         </MenuOptions>
