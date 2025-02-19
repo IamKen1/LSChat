@@ -6,9 +6,8 @@ export const checkForUpdates = async () => {
     const update = await Updates.checkForUpdateAsync();
     if (update.isAvailable) {
       Alert.alert(
-        'Update Available',
-        'A new version of the app is available. Would you like to update now?',
-        [
+        'System Update Available',
+        'A new version of the application is available with the following improvements:\n\n• Enhanced security: Added password confirmation during registration\n• Improved user experience: Added password visibility toggle functionality\n\nWould you like to install this update now?',        [
           {
             text: 'Update',
             onPress: async () => {
