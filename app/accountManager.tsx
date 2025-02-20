@@ -273,6 +273,7 @@ export default function AccountManager() {
       updatedPortals[selectedPortalRef.current].token = data;
 
       createAccount(data).then(() => {
+        Alert.alert('Success', 'Account successfully connected!');
         if (!fromImagePicker) {
           setShowCamera(false);
         }
