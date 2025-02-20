@@ -124,8 +124,12 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
+    // variantFilter { variant ->
+    //     if (variant.buildType.name == "release") {
+    //         setIgnore(true)
+    //     }
+    // }
 }
-
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:
 // android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
@@ -149,6 +153,12 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    implementation project(path: ':react-native-async-storage_async-storage', configuration: 'default')
+    implementation project(path: ':react-native-gesture-handler', configuration: 'default')
+    implementation project(path: ':react-native-safe-area-context', configuration: 'default')
+    implementation project(path: ':react-native-screens', configuration: 'default')
+    implementation project(path: ':react-native-vector-icons', configuration: 'default')
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
@@ -174,5 +184,4 @@ dependencies {
         implementation jscFlavor
     }
 }
-
 apply plugin: 'com.google.gms.google-services'
