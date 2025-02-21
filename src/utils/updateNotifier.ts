@@ -7,34 +7,37 @@ export const checkForUpdates = async () => {
     if (update.isAvailable) {
       Alert.alert(
         'System Update Available',
-        'A new version of the application is available with the following improvements:\n\n• Enhanced security: Added password confirmation during registration\n• Improved user experience: Added password visibility toggle functionality\n\nWould you like to install this update now?',        [
-          {
-            text: 'Update',
-            onPress: async () => {
-              try {
-                await Updates.fetchUpdateAsync();
-                Alert.alert(
-                  'Success',
-                  'Update downloaded. The app will now restart.',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => Updates.reloadAsync()
-                    }
-                  ]
-                );
-              } catch (error) {
-                Alert.alert(
-                  'Error',
-                  'Failed to download update. Please try again later.'
-                );
-              }
+
+
+        'A new version of the application is available with the following improvements:\n\n• QR code upload functionality added\n\nWould you like to install this update now?',
+        [{
+          text: 'Update',
+          onPress: async () => {
+            try {
+              await Updates.fetchUpdateAsync();
+              Alert.alert(
+                'Success',
+                'Update downloaded. The app will now restart.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => Updates.reloadAsync()
+                  }
+                ]
+              );
+            } catch (error) {
+              Alert.alert(
+                'Error',
+                'Failed to download update. Please try again later.'
+              );
+
             }
-          },
-          {
-            text: 'Later',
-            style: 'cancel'
           }
+        },
+        {
+          text: 'Later',
+          style: 'cancel'
+        }
         ]
       );
     }
