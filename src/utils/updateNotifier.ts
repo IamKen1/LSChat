@@ -7,6 +7,8 @@ export const checkForUpdates = async () => {
     if (update.isAvailable) {
       Alert.alert(
         'System Update Available',
+
+
         'A new version of the application is available with the following improvements:\n\n• QR code upload functionality added\n\nWould you like to install this update now?',
         [{
           text: 'Update',
@@ -28,6 +30,7 @@ export const checkForUpdates = async () => {
                 'Error',
                 'Failed to download update. Please try again later.'
               );
+
             }
           }
         },
