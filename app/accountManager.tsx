@@ -1,6 +1,6 @@
 import { CameraView, CameraType, useCameraPermissions, Camera } from 'expo-camera';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Text, TouchableOpacity, View, TextInput, FlatList, Alert } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { Text, TouchableOpacity, View, TextInput, FlatList, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Menu, MenuTrigger, MenuOptions, MenuOption, MenuProvider } from 'react-native-popup-menu';
@@ -19,6 +19,11 @@ export default function AccountManager() {
   const [isScanning, setIsScanning] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // New state for rename modal
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameIndex, setRenameIndex] = useState<number | null>(null);
+  const [newPortalName, setNewPortalName] = useState('');
 
   // Create a ref that will always hold the current selectedPortal value.
   const selectedPortalRef = useRef<number | null>(null);
@@ -69,6 +74,7 @@ export default function AccountManager() {
     fetchSavedPortals();
     console.log('refresh trigger 1', refreshTrigger);
   }, [refreshTrigger]);
+
   // Handle reconnection of inactive portals
   const handleReconnect = async (index: number) => {
     Alert.alert(
@@ -140,6 +146,82 @@ export default function AccountManager() {
       }
       setPortals([...portals, { name: trimmedName }]);
       setPortalName('');
+    }
+  };
+
+  const handlePortalNameChange = (text: string) => {
+    setPortalName(text);
+  };
+
+  // Modified rename logic: open a modal to enter new name
+  const openRenameModal = (index: number) => {
+    setRenameIndex(index);
+    setNewPortalName(portals[index].name);
+    setShowRenameModal(true);
+  };
+
+  const handleConfirmRename = async () => {
+    if (renameIndex === null) return;
+    await renamePortal(renameIndex, newPortalName);
+    // close modal and clear rename state
+    setShowRenameModal(false);
+    setRenameIndex(null);
+    setNewPortalName('');
+  };
+
+  const renamePortal = async (index: number, newName: string) => {
+    const trimmedName = newName.trim();
+    if (!trimmedName) return;
+  
+    // Check for duplicate portal name (ignoring case)
+    const duplicate = portals.find(
+      (portal, i) =>
+        portal.name.toLowerCase() === trimmedName.toLowerCase() && i !== index
+    );
+    if (duplicate) {
+      Alert.alert("Duplicate Portal", "This portal name already exists");
+      return;
+    }
+  
+    try {
+      // Only call the API if there is a channel token (i.e., the account is connected)
+      if (portals[index].token) {
+        const userSessionData = await AsyncStorage.getItem('userSession');
+        if (userSessionData) {
+          const userData = JSON.parse(userSessionData);
+          const response = await fetch(`${API_BASE_URL}/api/updateAccount`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: userData.user.user_id,
+              name: trimmedName,
+              channel: portals[index].token
+            }),
+          });
+    
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+          }
+    
+          const data = await response.json();
+          if (!data.success) {
+            Alert.alert("Error", data.message || "Failed to update account");
+            return;
+          }
+        }
+      }
+      // Update the local state after a successful API call
+      const updatedPortals = [...portals];
+      updatedPortals[index].name = trimmedName;
+      setPortals(updatedPortals);
+      Alert.alert("Success", "Account name updated successfully");
+    } catch (error) {
+      console.error("Error renaming portal:", error);
+      Alert.alert("Error", "Failed to update portal name. Please try again later.");
     }
   };
 
@@ -350,26 +432,24 @@ export default function AccountManager() {
       </SafeAreaView>
     );
   }
+  
   return (
     <MenuProvider>
       <SafeAreaView className="flex-1 bg-slate-50">
         <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4 ">
           <Text className="text-white text-xl font-bold text-center">Account Manager</Text>
         </LinearGradient>
-        <View className="">
-          <View className="bg-white  shadow-lg p-2 mb-2">
+        <View>
+          <View className="bg-white shadow-lg p-2 mb-2">
             <View className="flex-row items-center">
               <TextInput
-                className="flex-1 p-4 bg-slate-50  text-base font-medium mr-2"
+                className="flex-1 p-4 bg-slate-50 text-base font-medium mr-2"
                 value={portalName}
-                onChangeText={setPortalName}
+                onChangeText={handlePortalNameChange}
                 placeholder="Enter portal name"
                 placeholderTextColor="#94A3B8"
               />
-              <TouchableOpacity
-                className="bg-[#6B21A8] p-4  shadow-lg"
-                onPress={addPortal}
-              >
+              <TouchableOpacity className="bg-[#6B21A8] p-4 shadow-lg" onPress={addPortal}>
                 <Ionicons name="add" size={24} color="white" />
               </TouchableOpacity>
             </View>
@@ -379,7 +459,7 @@ export default function AccountManager() {
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                className="bg-white  shadow-lg mb-3 overflow-hidden"
+                className="bg-white shadow-lg mb-3 overflow-hidden"
                 onPress={() => handlePortalPress(index)}
               >
                 <View className="p-5">
@@ -421,16 +501,24 @@ export default function AccountManager() {
                         <MenuTrigger>
                           <Ionicons name="ellipsis-vertical" size={24} color="#64748B" />
                         </MenuTrigger>
-                        <MenuOptions customStyles={{
-                          optionsContainer: {
-                            borderRadius: 5,
-                            padding: 2,
-                          },
-                        }}>
+                        <MenuOptions
+                          customStyles={{
+                            optionsContainer: {
+                              borderRadius: 5,
+                              padding: 2,
+                            },
+                          }}
+                        >
                           <MenuOption onSelect={() => removePortal(index)}>
                             <View className="flex-row items-center p-1">
                               <Ionicons name="flash-off-outline" size={16} color="#EF4444" />
-                              <Text className="ml-3  text-sm font-medium text-red-500">Disconnect</Text>
+                              <Text className="ml-3 text-sm font-medium text-red-500">Disconnect</Text>
+                            </View>
+                          </MenuOption>
+                          <MenuOption onSelect={() => openRenameModal(index)}>
+                            <View className="flex-row items-center p-1">
+                              <Ionicons name="pencil-outline" size={16} color="#64748B" />
+                              <Text className="ml-3 text-sm font-medium text-red-500">Rename</Text>
                             </View>
                           </MenuOption>
                         </MenuOptions>
@@ -442,6 +530,32 @@ export default function AccountManager() {
             )}
           />
         </View>
+        <Modal
+          visible={showRenameModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowRenameModal(false)}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={{ width: '80%', backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Rename Portal</Text>
+              <TextInput
+                value={newPortalName}
+                onChangeText={setNewPortalName}
+                placeholder="Enter new portal name"
+                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 5, padding: 10, marginBottom: 20 }}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <TouchableOpacity style={{ marginRight: 10 }} onPress={() => setShowRenameModal(false)}>
+                  <Text style={{ fontSize: 16, color: 'red' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleConfirmRename}>
+                  <Text style={{ fontSize: 16, color: 'blue' }}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </MenuProvider>
   );
