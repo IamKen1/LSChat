@@ -9,7 +9,7 @@ export const checkForUpdates = async () => {
         'System Update Available',
 
 
-        'A new version of the application is available with the following improvements:\n\n• QR code upload functionality added\n\nWould you like to install this update now?',
+        'A new version of the application is available with the following improvements:\n\n• Minor fix for multiple accounts\n\nWould you like to install this update now?',
         [{
           text: 'Update',
           onPress: async () => {

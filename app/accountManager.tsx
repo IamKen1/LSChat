@@ -50,8 +50,9 @@ export default function AccountManager() {
 
           if (response.ok) {
             const data = await response.json();
+            console.log('Fetched portals:', data);
             if (data.success) {
-              const savedPortals = Array.isArray(data.user) ? data.user : [data.user];
+              const savedPortals = Array.isArray(data.accounts) ? data.accounts : [data.accounts];
               setPortals(savedPortals.map((portal: any) => ({
                 name: portal.name,
                 token: portal.channel,
@@ -68,7 +69,6 @@ export default function AccountManager() {
     fetchSavedPortals();
     console.log('refresh trigger 1', refreshTrigger);
   }, [refreshTrigger]);
-
   // Handle reconnection of inactive portals
   const handleReconnect = async (index: number) => {
     Alert.alert(
