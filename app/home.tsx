@@ -267,7 +267,7 @@ const HomeScreen = React.memo(() => {
             const data = await response.json();
             if (data.success) {
 
-              const allPortals = Array.isArray(data.user) ? data.user : [data.user];
+              const allPortals = Array.isArray(data.accounts) ? data.accounts : [data.accounts];
               const savedPortals = allPortals.filter((portal: any) => portal.status === 'active');
 
               // Fetch all messages in parallel

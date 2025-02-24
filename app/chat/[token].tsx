@@ -175,8 +175,7 @@ useEffect(() => {
       const data = await response.json();
       if (!data.success) return;
 
-      const portals = Array.isArray(data.user) ? data.user : [data.user];
-      const currentPortal = portals.find((portal: { channel: string | string[]; }) => portal.channel === token);
+      const currentPortal = data.accounts.find((account: { channel: string | string[]; }) => account.channel === token);
       if (currentPortal) {
         setPortalName(currentPortal.name);
       }
