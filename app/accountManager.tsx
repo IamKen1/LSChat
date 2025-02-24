@@ -128,8 +128,17 @@ export default function AccountManager() {
 
   // Add new portal to the list
   const addPortal = () => {
-    if (portalName.trim()) {
-      setPortals([...portals, { name: portalName }]);
+    const trimmedName = portalName.trim();
+    if (trimmedName) {
+      // Check for duplicate portal name (ignoring case)
+      const duplicate = portals.find(
+        portal => portal.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicate) {
+        Alert.alert("Duplicate Portal", "This portal name already exists");
+        return;
+      }
+      setPortals([...portals, { name: trimmedName }]);
       setPortalName('');
     }
   };
