@@ -90,7 +90,7 @@ const TabBar = React.memo<TabBarProps>(({ activeTab, setActiveTab, showComingSoo
     </TouchableOpacity>
     <TouchableOpacity
       className="flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2"
-      onPress={() => setActiveTab('Contacts')}
+      onPress={() => showComingSoonAlert('Contacts')}
     >
       <Icon name="contacts" size={24} color={activeTab === 'Contacts' ? '#6B21A8' : '#666666'} />
       <Text className="text-sm font-medium text-gray-500">Contacts</Text>
