@@ -1,85 +1,253 @@
-import React, { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Modal, TextInput,ScrollView } from 'react-native'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import { View, Text, FlatList, TouchableOpacity, Modal, TextInput, ScrollView, SectionList, SectionListData } from 'react-native'
 import { API_BASE_URL } from '@/config'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Contact {
     id: string
     name: string
     phone: string
+    status: 'pending' | 'accepted' | 'rejected'
+}
+
+interface Section {
+    title: string;
+    data: Contact[];
 }
 
 const ContactLists = () => {
     const [modalVisible, setModalVisible] = useState(false)
-    const [newContact, setNewContact] = useState<Contact>({ id: '', name: '', phone: '' })
+    const [newContact, setNewContact] = useState<Contact>({ id: '', name: '', phone: '', status: 'pending' })
     const [searchResults, setSearchResults] = useState<Contact[]>([])
     const [showDropdown, setShowDropdown] = useState(false)
+    const [contacts, setContacts] = useState<Contact[]>([])
 
-    const contacts: Contact[] = [
-        { id: '1', name: 'Juan Dela Cruz', phone: '+63 917-123-4567' },
-        { id: '2', name: 'Maria Santos', phone: '+63 918-234-5678' },
-        { id: '3', name: 'Pedro Reyes', phone: '+63 919-345-6789' },
-        { id: '4', name: 'Diego Silang', phone: '+63 920-456-7890' },
-    ]
+    useEffect(() => {
+        fetchContactLists()
+    }, [])
 
-    const searchContacts = async (query: string) => {
+    const fetchContactLists = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/search-contacts?search_data=${query}`)
+            const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}')
+            if (!userData.user) return
+
+            const response = await fetch(`${API_BASE_URL}/api/fetch-contact-lists?user_id=${userData.user.user_id}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            
             const data = await response.json()
-            setSearchResults(data.map((item: { first_name: string; last_name: string; user_id: number; mobile_number: string; }) => ({
-                name: `${item.first_name} ${item.last_name}`,
-                phone: `${item.mobile_number}`,
-                id: item.user_id.toString()
-            })))
+            const formattedContacts = data.map((contact: any) => ({
+                id: String(contact.contact_id),
+                name: contact.contact_full_name,
+                phone: contact.contact_mobile_number,
+                status: contact.status || 'pending'
+            }))
+            setContacts(formattedContacts)
+        } catch (error) {
+            console.error('Error fetching contacts:', error)
+            setContacts([])
+        }
+    }    
+
+    // Modal handlers
+    const closeModal = useCallback(() => {
+        setModalVisible(false)
+        setShowDropdown(false)
+        setNewContact({ id: '', name: '', phone: '', status: 'pending' })
+        setSearchResults([])
+    }, [])
+
+    // Contact handlers
+    const handleSelectContact = useCallback((contact: Contact) => {
+        setNewContact({ ...contact, status: 'pending' })
+        setShowDropdown(false)
+    }, [])
+
+    const searchContacts = useCallback(async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            setShowDropdown(false);
+            return;
+        }
+
+        try {
+            const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}')
+            const response = await fetch(`${API_BASE_URL}/api/search-contacts?search_data=${encodeURIComponent(query)}`)
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+            
+            const filtered = data
+                .filter((item: any) => userData.user?.user_id !== item.user_id)
+                .map((item: any) => ({
+                    name: `${item.first_name} ${item.last_name}`,
+                    phone: item.mobile_number,
+                    id: String(item.user_id),
+                    status: 'pending'
+                }))
+            
+            setSearchResults(filtered)
             setShowDropdown(true)
         } catch (error) {
             console.error('Error searching contacts:', error)
+            setSearchResults([])
         }
-    }
-    const renderContact = ({ item }: { item: Contact }) => (
+    }, [])
+
+    const addContactToList = useCallback(async (contact: Contact) => {
+        if (!contact.id) return;
+
+        try {
+            const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}')
+            if (!userData.user) return
+
+            const response = await fetch(`${API_BASE_URL}/api/add-contact-to-list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userData.user.user_id,
+                    contact_id: Number(contact.id),
+                    status: 'pending'
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+            if (data.success) {
+                closeModal()
+                fetchContactLists()
+            }
+        } catch (error) {
+            console.error('Error adding contact:', error)
+        }
+    }, [closeModal, fetchContactLists])
+
+    // Group contacts by first letter
+    const groupedContacts = useMemo(() => {
+        const groups: { [key: string]: Contact[] } = {}
+        contacts.forEach(contact => {
+            const firstLetter = contact.name[0].toUpperCase()
+            if (!groups[firstLetter]) {
+                groups[firstLetter] = []
+            }
+            groups[firstLetter].push(contact)
+        })
+        
+        return Object.keys(groups).sort().map(letter => ({
+            title: letter,
+            data: groups[letter].sort((a, b) => a.name.localeCompare(b.name))
+        }))
+    }, [contacts])
+
+    const alphabet = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
+    const onAlphabetPress = useCallback((letter: string) => {
+        const sectionIndex = groupedContacts.findIndex(section => section.title === letter)
+        if (sectionIndex !== -1) {
+            sectionListRef.current?.scrollToLocation({
+                sectionIndex,
+                itemIndex: 0,
+                animated: true,
+                viewPosition: 0
+            })
+        }
+    }, [groupedContacts])
+
+    const sectionListRef = React.useRef<SectionList>(null)
+
+    // Render components
+    const renderContact = useCallback(({ item }: { item: Contact }) => (
         <TouchableOpacity 
-            className=" pb-2 mb-1 bg-white shadow-sm  border-b-gray-200"
+            className="py-2 px-4 border-b border-gray-100"
             onPress={() => showDropdown && handleSelectContact(item)}
         >
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
                     <View className="w-10 h-10 bg-purple-50 rounded-full items-center justify-center mr-3">
-                        <Text className="text-lg text-purple-800">{item.name.charAt(0)}</Text>
+                        <Text className="text-lg text-purple-800">{item.name[0]}</Text>
                     </View>
                     <View>
                         <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
-                        <Text className="text-sm text-gray-600 mt-1">{item.phone}</Text>
+                        <Text className="text-sm text-gray-600">{item.phone}</Text>
                     </View>
+                </View>
+                <View className={`px-2 py-1 rounded ${
+                    item.status === 'pending' ? 'bg-yellow-100' :
+                    item.status === 'accepted' ? 'bg-green-100' :
+                    'bg-red-100'
+                }`}>
+                    <Text className={`text-xs ${
+                        item.status === 'pending' ? 'text-yellow-800' :
+                        item.status === 'accepted' ? 'text-green-800' :
+                        'text-red-800'
+                    }`}>
+                        {item.status}
+                    </Text>
                 </View>
             </View>
         </TouchableOpacity>
-    )
-    const handleSelectContact = (contact: Contact) => {
-        setNewContact(contact)
-        setShowDropdown(false)
-    }
+    ), [showDropdown, handleSelectContact])
 
-    const closeModal = () => {
-        setModalVisible(false)
-        setShowDropdown(false)
-        setNewContact({ id: '', name: '', phone: '' })
-        setSearchResults([])
-    }
+    const renderSectionHeader = useCallback(({ section }: { section: SectionListData<Contact> }) => (
+        <View className="py-2 px-4 bg-gray-100">
+            <Text className="text-lg font-bold text-purple-800">{section.title}</Text>
+        </View>
+    ), [])
+
+    const SearchResultItem = useCallback(({ contact, onPress }: { contact: Contact, onPress: () => void }) => (
+        <TouchableOpacity
+            onPress={onPress}
+            className="p-3 border-b border-gray-200"
+        >
+            <Text className="text-gray-800">{contact.name}</Text>
+            <Text className="text-gray-500 text-sm">{contact.phone}</Text>
+        </TouchableOpacity>
+    ), [])
 
     return (
-        <View className="flex-1 bg-white p-4">
-            <FlatList 
-                className='flex-1 shadow-xl'
-                data={contacts}
-                renderItem={renderContact}
-                keyExtractor={item => item.id}
-                showsVerticalScrollIndicator={false}
-            />
-            <TouchableOpacity
-                className="absolute bottom-6 right-4 w-16 h-16 bg-[#6B21A8] rounded-full items-center justify-center shadow-lg"
-                onPress={() => setModalVisible(true)}
-            >
-                <Text className="text-white text-4xl shadow-gray-100">+</Text>
-            </TouchableOpacity>
+        <View className="flex-1 bg-white flex-row">
+            <View className="flex-1">
+                <SectionList
+                    ref={sectionListRef}
+                    sections={groupedContacts}
+                    renderItem={renderContact}
+                    renderSectionHeader={renderSectionHeader}
+                    keyExtractor={item => item.id}
+                    showsVerticalScrollIndicator={false}
+                    stickySectionHeadersEnabled={true}
+                />
+                <TouchableOpacity
+                    className="absolute bottom-6 right-4 w-16 h-16 bg-[#6B21A8] rounded-full items-center justify-center shadow-lg"
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Text className="text-white text-4xl">+</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View className="w-8 bg-transparent justify-center">
+                <ScrollView className="py-2">
+                    {alphabet.map((letter) => (
+                        <TouchableOpacity
+                            key={letter}
+                            onPress={() => onAlphabetPress(letter)}
+                            className="items-center py-0.5"
+                        >
+                            <Text className="text-xs text-purple-800 font-semibold">{letter}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
 
             <Modal
                 animationType="fade"
@@ -104,29 +272,24 @@ const ContactLists = () => {
                                 <View className="absolute top-11 left-0 right-0 max-h-40 border bg-white border-gray-300 rounded-lg overflow-hidden z-50">
                                     <ScrollView>
                                         {searchResults.map((contact, index) => (
-                                            <TouchableOpacity
+                                            <SearchResultItem
                                                 key={index}
+                                                contact={contact}
                                                 onPress={() => handleSelectContact(contact)}
-                                                className="p-3 border-b border-gray-200 hover:bg-gray-100"
-                                            >
-                                                <Text className="text-gray-800">{contact.name}</Text>
-                                                <Text className="text-gray-500 text-sm">{contact.phone}</Text>
-                                            </TouchableOpacity>
+                                            />
                                         ))}
                                     </ScrollView>
-                                </View>                          
-                              )}
+                                </View>
+                            )}
                         </View>
                         <View className="flex-row justify-end space-x-4">
-                            <TouchableOpacity
-                                onPress={closeModal}
-                                className="px-4 py-2"
-                            >
+                            <TouchableOpacity onPress={closeModal} className="px-4 py-2">
                                 <Text className="text-gray-500">Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                onPress={closeModal}
-                                className="bg-[#6B21A8] px-4 py-2 rounded-lg"
+                                onPress={() => addContactToList(newContact)}
+                                className={`px-4 py-2 rounded-lg ${newContact.id ? 'bg-[#6B21A8]' : 'bg-gray-300'}`}
+                                disabled={!newContact.id}
                             >
                                 <Text className="text-white">Add</Text>
                             </TouchableOpacity>
