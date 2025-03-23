@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image, ImageBackground, Animated } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,14 +8,6 @@ import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../config';
 import ContactLists from './contact-lists';
-// Notification configuration
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 interface HeaderProps {
   firstName: string;
@@ -25,6 +17,7 @@ interface HeaderProps {
   unreadMessages: number;
   onNotificationPress: () => void;
 }
+
 
 // Renders the app header with user info and search functionality
 const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, setSearchQuery, unreadMessages, onNotificationPress }) => (
@@ -57,7 +50,7 @@ const Header = React.memo<HeaderProps>(({ firstName, toggleMenu, searchQuery, se
           className="flex-row items-center bg-white/90 rounded-full px-4 h-11 shadow-sm"
           onPress={() => Alert.alert('Coming Soon!', 'Search feature coming soon!')}
         >
-          <Icon name="search" size={22} color="#3B0764" />
+          <Text className="text-[#8E24AA] text-xl mx-2">🔍</Text>
           <Text className="flex-1 text-sm text-gray-600 font-medium">Search messages...</Text>
         </TouchableOpacity>
       </View>
@@ -113,61 +106,113 @@ interface ChatListProps {
 
 // Renders the list of chat conversations
 const ChatList = React.memo<ChatListProps>(({ chatGroups, handleChatPress }) => (
-
-  <ScrollView className="flex-1">
-    {chatGroups.map((group) => (
-      <TouchableOpacity
-        key={group.id}
-        className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
-        onPress={() => handleChatPress(group.token)}
-      >
-        <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
-          <Text className="text-white text-xl font-bold">{group.name.split(' ').length > 1 ? group.name.split(' ').map(word => word[0]).slice(0, 2).join('') : group.name[0]}</Text>
-        </View>
-        <View className="flex-1">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
-            <Text className="text-xs text-gray-500">{group.time}</Text>
+  <View className="flex-1">
+    <ScrollView className="flex-1">
+      {chatGroups.map((group) => (
+        <TouchableOpacity
+          key={group.id}
+          className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
+          onPress={() => handleChatPress(group.token)}
+        >
+          <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
+            <Text className="text-white text-xl font-bold">{group.name.split(' ').length > 1 ? group.name.split(' ').map(word => word[0]).slice(0, 2).join('') : group.name[0]}</Text>
           </View>
-          <Text className={`text-sm text-gray-500 ${group.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
-            {group.lastMessage}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    ))}
-  </ScrollView>
+          <View className="flex-1">
+            <View className="flex-row justify-between mb-1">
+              <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
+              <Text className="text-xs text-gray-500">{group.time}</Text>
+            </View>
+            <Text className={`text-sm text-gray-500 ${group.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
+              {group.lastMessage}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+    <TouchableOpacity
+      className="absolute bottom-4 right-4 w-14 h-14 bg-[#6B21A8] rounded-full justify-center items-center shadow-lg"
+      onPress={() => router.push('/chat/newMessage')}
+    >
+      <Icon name="message" size={28} color="white" />
+    </TouchableOpacity>
+  </View>
 ));
+
+// Add proper interfaces
+interface ChatGroup {
+  id: string;
+  name: string;
+  token: string;
+  lastMessage: string;
+  time: string;
+  isNewMessage: boolean;
+  lastMessageId: string;
+}
+
+interface UserState {
+  firstName: string;
+  menuVisible: boolean;
+  activeTab: string;
+  searchQuery: string;
+}
+
+// Add new interface for unread messages
+interface UnreadMessage {
+  id: number;
+  token: string;
+  message: string;
+  created_at: string;
+  groupName: string;
+  is_read: number;
+}
+
+interface ChatState {
+  groups: ChatGroup[];
+  lastMessageIds: Record<string, string>;
+  unreadMessages: UnreadMessage[]; // Update type from any[] to UnreadMessage[]
+  unreadCount: number;
+  showNotifications: boolean;
+}
+
+interface NotificationState {
+  permission: boolean;
+  notifiedIds: Set<string>;
+}
 
 // Main screen component managing chat functionality and user interface
 const HomeScreen = React.memo(() => {
-  const [firstName, setFirstName] = useState('');
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState('Chats');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [chatGroups, setChatGroups] = useState<Array<{
-    id: string;
-    name: string;
-    token: string;
-    lastMessage: string;
-    time: string;
-    isNewMessage: boolean;
-    lastMessageId: string;
-  }>>([]);
-  const [lastMessageIds, setLastMessageIds] = useState<{ [key: string]: string }>({});
-  const [notificationPermission, setNotificationPermission] = useState(false);
-  const [notifiedMessageIds, setNotifiedMessageIds] = useState<Set<string>>(new Set());
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState<any[]>([]); const [unreadCount, setUnreadCount] = useState(0);
+  // Fix state typing
+  const [userState, setUserState] = useState<UserState>({
+    firstName: '',
+    menuVisible: false,
+    activeTab: 'Chats',
+    searchQuery: '',
+  });
+
+  const [chatState, setChatState] = useState<ChatState>({
+    groups: [],
+    lastMessageIds: {},
+    unreadMessages: [],
+    unreadCount: 0,
+    showNotifications: false,
+  });
+
+  const [notificationState, setNotificationState] = useState<NotificationState>({
+    permission: false,
+    notifiedIds: new Set<string>(),
+  });
 
   const handleNotificationPress = () => {
-    setShowNotifications(!showNotifications);
+    setChatState(prevState => ({
+      ...prevState,
+      showNotifications: !prevState.showNotifications,
+    }));
   };
 
-  // Update the getUnreadCount function to use the API
-  const getUnreadCount = async () => {
+  // Memoize callbacks
+  const getUnreadCount = useCallback(async () => {
     let totalUnread = 0;
-
-    for (const group of chatGroups) {
+    for (const group of chatState.groups) {
       try {
         const response = await fetch(`${API_BASE_URL}/api/messages/unread/${group.token}`);
         if (response.ok) {
@@ -178,42 +223,46 @@ const HomeScreen = React.memo(() => {
         console.error('Error fetching unread count:', error);
       }
     }
-
     return totalUnread;
-  };
+  }, [chatState.groups]);
+
   useEffect(() => {
     const fetchUnreadMessages = async () => {
-      const allUnreadMessages = [];
-      for (const group of chatGroups) {
+      const allUnreadMessages: UnreadMessage[] = []; 
+      for (const group of chatState.groups) {
         try {
           const response = await fetch(`${API_BASE_URL}/api/messages/unread/data/${group.token}`);
           if (response.ok) {
-            const messages = await response.json();
-            allUnreadMessages.push(...messages.map((msg: any) => ({
+            const messages: Omit<UnreadMessage, 'groupName'>[] = await response.json();
+            allUnreadMessages.push(...messages.map(msg => ({
               ...msg,
-              groupName: group.name // Add group name to message data
+              groupName: group.name
             })));
           }
         } catch (error) {
           console.error('Error fetching unread messages:', error);
         }
       }
-      setUnreadMessages(allUnreadMessages);
+      setChatState(prevState => ({
+        ...prevState,
+        unreadMessages: allUnreadMessages,
+      }));
     };
 
-    if (showNotifications) {
+    if (chatState.showNotifications) {
       fetchUnreadMessages();
     }
-  }, [showNotifications, chatGroups]);
+  }, [chatState.showNotifications, chatState.groups]);
+
   useEffect(() => {
     registerForPushNotifications();
   }, []);
 
-  // Add this effect to periodically update unread count
+  // Fix dependency array in effects
   useEffect(() => {
     const updateUnreadCount = async () => {
       const count = await getUnreadCount();
-      setUnreadCount(count);
+      setChatState(prev => ({ ...prev, unreadCount: count }));
     };
 
     updateUnreadCount();
@@ -222,7 +271,7 @@ const HomeScreen = React.memo(() => {
     return () => {
       clearInterval(interval);
     };
-  }, [chatGroups, getUnreadCount]); // Added getUnreadCount to dependency array
+  }, [getUnreadCount]);
 
   // Handles push notification permissions 
   const registerForPushNotifications = async () => {
@@ -234,14 +283,23 @@ const HomeScreen = React.memo(() => {
         finalStatus = status;
       }
       if (finalStatus === 'granted') {
-        setNotificationPermission(true);
+        setNotificationState(prevState => ({
+          ...prevState,
+          permission: true,
+        }));
       } else {
         Alert.alert('Failed to get push token for push notification!');
-        setNotificationPermission(false);
+        setNotificationState(prevState => ({
+          ...prevState,
+          permission: false,
+        }));
       }
     } catch (error) {
       console.error('Error registering for push notifications:', error);
-      setNotificationPermission(false);
+      setNotificationState(prevState => ({
+        ...prevState,
+        permission: false,
+      }));
     }
   };
 
@@ -252,7 +310,10 @@ const HomeScreen = React.memo(() => {
         const userSessionData = await AsyncStorage.getItem('userSession');
         if (userSessionData) {
           const userData = JSON.parse(userSessionData);
-          setFirstName(userData.user.first_name);
+          setUserState(prevState => ({
+            ...prevState,
+            firstName: userData.user.first_name,
+          }));
           const response = await fetch(`${API_BASE_URL}/api/fetchAccounts`, {
             method: 'POST',
             headers: {
@@ -289,7 +350,7 @@ const HomeScreen = React.memo(() => {
                 const unreadCount = messageData.filter((msg: any) => msg.is_read === 0).length;
                 const isNewMessage = unreadCount > 0;
 
-                if (notificationPermission && lastMessageId && isNewMessage && !notifiedMessageIds.has(lastMessageId)) {
+                if (notificationState.permission && lastMessageId && isNewMessage && !notificationState.notifiedIds.has(lastMessageId)) {
                   Notifications.scheduleNotificationAsync({
                     content: {
                       title: portal.name,
@@ -299,7 +360,10 @@ const HomeScreen = React.memo(() => {
                   }).catch(error => {
                     console.error('Error scheduling notification:', error);
                   });
-                  setNotifiedMessageIds(prev => new Set([...prev, lastMessageId]));
+                  setNotificationState(prevState => ({
+                    ...prevState,
+                    notifiedIds: new Set([...prevState.notifiedIds, lastMessageId]),
+                  }));
                 }
 
                 return {
@@ -319,7 +383,7 @@ const HomeScreen = React.memo(() => {
                 };
               });
 
-              const formattedGroups = updatedPortals.map((portal: any) => ({
+              const formattedGroups: ChatGroup[] = updatedPortals.map((portal: any) => ({
                 id: portal.id,
                 name: portal.name,
                 token: portal.channel,
@@ -328,14 +392,16 @@ const HomeScreen = React.memo(() => {
                 isNewMessage: portal.isNewMessage || false,
                 lastMessageId: portal.lastMessageId || ''
               }));
-              setChatGroups(formattedGroups);
-              const newLastMessageIds = formattedGroups.reduce((acc: any, group: any) => {
-                if (group.lastMessageId) {
-                  acc[group.token] = group.lastMessageId;
-                }
-                return acc;
-              }, {});
-              setLastMessageIds(newLastMessageIds);
+              setChatState(prevState => ({
+                ...prevState,
+                groups: formattedGroups,
+                lastMessageIds: formattedGroups.reduce((acc, group) => {
+                  if (group.lastMessageId) {
+                    acc[group.token] = group.lastMessageId;
+                  }
+                  return acc;
+                }, {} as Record<string, string>),
+              }));
             }
           }
         }
@@ -347,23 +413,157 @@ const HomeScreen = React.memo(() => {
     const interval = setInterval(fetchSavedPortals, 5000);
     return () => clearInterval(interval);
 
-  }, [notificationPermission, notifiedMessageIds]);
+  }, [notificationState.permission, notificationState.notifiedIds]);
+
+  // Add notification listener setup
+  useEffect(() => {
+    const backgroundSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as { channel: string };
+      if (data?.channel) {
+        handleChatPress(data.channel);
+      }
+    });
+
+    const foregroundSubscription = Notifications.addNotificationReceivedListener(notification => {
+      // Handle foreground notifications
+      const data = notification.request.content.data as { channel: string };
+      fetchSavedPortals(); // Refresh messages when notification received
+    });
+
+    return () => {
+      backgroundSubscription.remove();
+      foregroundSubscription.remove();
+    };
+  }, []);
+
+  // Modify fetchSavedPortals to handle notifications better
+  const fetchSavedPortals = async () => {
+    try {
+      const userSessionData = await AsyncStorage.getItem('userSession');
+      if (userSessionData) {
+        const userData = JSON.parse(userSessionData);
+        setUserState(prevState => ({
+          ...prevState,
+          firstName: userData.user.first_name,
+        }));
+        const response = await fetch(`${API_BASE_URL}/api/fetchAccounts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: userData.user.user_id
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+
+            const allPortals = Array.isArray(data.accounts) ? data.accounts : [data.accounts];
+            const savedPortals = allPortals.filter((portal: any) => portal.status === 'active');
+
+            // Fetch all messages in parallel
+            const messagePromises = savedPortals.map((portal: any) =>
+              fetch(`${API_BASE_URL}/api/messages/${portal.channel}`)
+                .then(res => res.json())
+                .catch(error => {
+                  console.error('Error fetching messages at home:', error);
+                  return [];
+                })
+            );
+
+            const allMessages = await Promise.all(messagePromises);
+            const updatedPortals = savedPortals.map((portal: any, index: number) => {
+              const messageData = allMessages[index];
+              const lastMessage = messageData.length > 0 ? messageData[messageData.length - 1].message : 'No messages yet';
+              const lastMessageTime = messageData.length > 0 ? messageData[messageData.length - 1].created_at : '';
+              const lastMessageId = messageData.length > 0 ? messageData[messageData.length - 1].id : null;
+              const unreadCount = messageData.filter((msg: any) => msg.is_read === 0).length;
+              const isNewMessage = unreadCount > 0;
+
+              if (notificationState.permission && lastMessageId && isNewMessage) {
+                Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: portal.name,
+                    body: lastMessage,
+                    data: { channel: portal.channel },
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.MAX,
+                    autoDismiss: false,
+                  },
+                  trigger: null,
+                });
+              }
+
+              return {
+                ...portal,
+                lastMessage,
+                lastMessageId,
+                isNewMessage,
+                time: lastMessageTime ? new Date(lastMessageTime).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: 'numeric',
+                  hour12: true,
+                  timeZone: 'UTC',
+                }) : ''
+              };
+            });
+
+            const formattedGroups: ChatGroup[] = updatedPortals.map((portal: any) => ({
+              id: portal.id,
+              name: portal.name,
+              token: portal.channel,
+              lastMessage: portal.lastMessage || 'No messages yet',
+              time: portal.time || '',
+              isNewMessage: portal.isNewMessage || false,
+              lastMessageId: portal.lastMessageId || ''
+            }));
+            setChatState(prevState => ({
+              ...prevState,
+              groups: formattedGroups,
+              lastMessageIds: formattedGroups.reduce((acc, group) => {
+                if (group.lastMessageId) {
+                  acc[group.token] = group.lastMessageId;
+                }
+                return acc;
+              }, {} as Record<string, string>),
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching saved portals:', error);
+    }
+  };
 
   // Navigates to account management screen
   const navigateToAccount = () => {
-    setMenuVisible(false);
+    setUserState(prevState => ({
+      ...prevState,
+      menuVisible: false,
+    }));
     router.push('/accountManager');
   };
 
   // Navigates to profile management screen
   const navigateProfile = () => {
-    setMenuVisible(false);
+    setUserState(prevState => ({
+      ...prevState,
+      menuVisible: false,
+    }));
     router.push('/profileManagement');
   };
 
   // Toggles the side menu visibility
   const toggleMenu = () => {
-    setMenuVisible(!menuVisible);
+    setUserState(prevState => ({
+      ...prevState,
+      menuVisible: !prevState.menuVisible,
+    }));
   };
 
   // Handles chat selection and marks messages as read
@@ -378,13 +578,15 @@ const HomeScreen = React.memo(() => {
       });
 
       if (response.ok) {
-        const updatedChatGroups = chatGroups.map(group => {
-          if (group.token === token) {
-            return { ...group, isNewMessage: false };
-          }
-          return group;
-        });
-        setChatGroups(updatedChatGroups);
+        setChatState(prevState => ({
+          ...prevState,
+          groups: prevState.groups.map(group => {
+            if (group.token === token) {
+              return { ...group, isNewMessage: false };
+            }
+            return group;
+          }),
+        }));
       }
     } catch (error) {
       console.error('Error marking messages as read:', error);
@@ -405,7 +607,7 @@ const HomeScreen = React.memo(() => {
       console.error('Error logging out:', error);
     }
   };
- 
+
   // Shows alert for upcoming features
   const showComingSoonAlert = (feature: string) => {
     Alert.alert(
@@ -424,18 +626,18 @@ const HomeScreen = React.memo(() => {
   return (
     <SafeAreaView className="flex-1 bg-secondary">
       <Header
-        firstName={firstName}
+        firstName={userState.firstName}
         toggleMenu={toggleMenu}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        unreadMessages={unreadCount}
+        searchQuery={userState.searchQuery}
+        setSearchQuery={(query: string) => setUserState(prevState => ({ ...prevState, searchQuery: query }))}
+        unreadMessages={chatState.unreadCount}
         onNotificationPress={handleNotificationPress}
       />
-      {showNotifications && (
+      {chatState.showNotifications && (
         <>
           <TouchableOpacity
             className="absolute inset-0 z-40"
-            onPress={() => setShowNotifications(false)}
+            onPress={() => setChatState(prevState => ({ ...prevState, showNotifications: false }))}
             activeOpacity={1}
           />
           <View className="absolute top-[80] right-4 w-[300] bg-white rounded-lg shadow-lg z-50 max-h-[400] overflow-hidden">
@@ -443,14 +645,14 @@ const HomeScreen = React.memo(() => {
               <Text className="font-bold text-lg">Notifications</Text>
             </View>
             <ScrollView className="max-h-[350]">
-              {unreadMessages.length > 0 ? (
-                unreadMessages.map(message => (
+              {chatState.unreadMessages.length > 0 ? (
+                chatState.unreadMessages.map(message => (
                   <TouchableOpacity
                     key={message.id}
                     className="p-4 border-b border-gray-100"
                     onPress={() => {
                       handleChatPress(message.token);
-                      setShowNotifications(false);
+                      setChatState(prevState => ({ ...prevState, showNotifications: false }));
                     }}
                   >
                     <Text className="font-semibold">{message.groupName}</Text>
@@ -478,22 +680,22 @@ const HomeScreen = React.memo(() => {
         </>
       )}
       <TabBar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={userState.activeTab}
+        setActiveTab={(tab: string) => setUserState(prevState => ({ ...prevState, activeTab: tab }))}
         showComingSoonAlert={showComingSoonAlert}
       />
-      {activeTab === 'Chats' ? (
+      {userState.activeTab === 'Chats' ? (
         <ChatList
-          chatGroups={chatGroups}
+          chatGroups={chatState.groups}
           handleChatPress={handleChatPress}
         />
-      ) : activeTab === 'Contacts' ? (
+      ) : userState.activeTab === 'Contacts' ? (
         <ContactLists />
       ) : null}
       <View className="items-center pb-3">
         <Text className="text-black/70 text-sm">Powered by ICTD</Text>
       </View>
-      {menuVisible && (
+      {userState.menuVisible && (
         <>
           <TouchableOpacity
             className="absolute inset-0 bg-black/60 z-50"
