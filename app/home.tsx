@@ -130,12 +130,12 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, handleChatPress }) => 
       ))}
     </ScrollView>
     {/* hide message icon for now */}
-    <TouchableOpacity
+    {/* <TouchableOpacity
       className="absolute bottom-4 right-4 w-14 h-14 bg-[#6B21A8] rounded-full justify-center items-center shadow-lg"
       onPress={() => router.push('/chat/newMessage')}
     >
       <Icon name="message" size={28} color="white" />
-    </TouchableOpacity>
+    </TouchableOpacity> */}
   </View>
 ));
 
