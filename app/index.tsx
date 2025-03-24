@@ -1,4 +1,3 @@
-
 import { KeyboardAvoidingView,ScrollView, Platform, Text, View, TextInput, TouchableOpacity, Pressable, Alert, Animated, ImageBackground, Image, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,6 +5,7 @@ import  { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config';
 import { checkForUpdates } from "@/src/utils/updateNotifier";
+import { getMessaging, getToken as getMessagingToken } from '@react-native-firebase/messaging';
 
 
 
@@ -97,17 +97,27 @@ export default function Index() {
     try {
       setError('');
       setIsLoggingIn(true);
+
+      // Retrieve FCM token
+      const messaging = getMessaging();
+      const fcm_token = await getMessagingToken(messaging);
+
       const response = await fetch(`${API_BASE_URL}/api/userLogin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ 
+          username, 
+          password, 
+          fcm_token 
+        }),
       });
 
       const data = await response.json();
-
-      if (response.ok) {
+      console.log('data ng json:', data);
+      if (data.success) {
+        console.log('Login successful:', data);
         await AsyncStorage.setItem('userSession', JSON.stringify(data));
         if (rememberMe) {
           await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({ username, password }));
@@ -117,10 +127,11 @@ export default function Index() {
         router.replace('/home');
         console.log('Login successful:', data);
       } else {
-        setError(data.message || 'Login failed. Please check your credentials.');
+        setError(data.message || 'Invalid credentials');
       }
     } catch (error) {
       setError('Network error. Please try again later.');
+      console.error('Login error:', error);
     } finally {
       setIsLoggingIn(false);
     }

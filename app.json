@@ -13,7 +13,11 @@
       "bundleIdentifier": "com.kbgutierrez.lschat",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "LS Chat"
+        "CFBundleDisplayName": "LS Chat",
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       },
       "buildNumber": "1",
       "runtimeVersion": {
@@ -22,17 +26,26 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
+      "additionalProperties": {
+        "googleServices": true
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0a0d54"
       },
       "icon": "./assets/images/adaptive-icon.png",
       "permissions": [
-        "android.permission.CAMERA"
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "WAKE_LOCK"
       ],
       "runtimeVersion": "1.0.0",
       "versionCode": 1,
-      "package": "com.kbgutierrez.lschat"
+      "package": "com.kbgutierrez.lschat",
+      "networkSecurityConfig": {
+        "cleartextTrafficPermitted": true
+      }
     },
     "web": {
       "bundler": "metro",
@@ -42,41 +55,17 @@
         "viewport": "width=device-width, initial-scale=1, maximum-scale=1"
       }
     },
-    "cli": {
-      "appVersionSource": "remote"
-    },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/adaptive-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#0a0d54"
-        }
-      ],
-      [
-        "expo-sqlite",
-        {
-          "enableFTS": true,
-          "useSQLCipher": false,
-          "android": {},
-          "ios": {}
-        }
-      ],
+      "expo-splash-screen",
+      "expo-sqlite",
       "expo-barcode-scanner",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/adaptive-icon.png",
-          "color": "#0a0d54",
-          "sounds": [
-            "./assets/notification_sound.wav"
-          ]
-        }
-      ],
-      "expo-asset"
+      "expo-notifications",
+      "expo-asset",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true

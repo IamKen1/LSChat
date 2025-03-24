@@ -13,7 +13,7 @@ export default function AccountManager() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [portalName, setPortalName] = useState('');
-  const [portals, setPortals] = useState<Array<{ name: string, token?: string, status?: string }>>([]);
+  const [portals, setPortals] = useState<Array<{ id?: number, name: string, token?: string, status?: string }>>([]);
   const [showCamera, setShowCamera] = useState(false);
   const [selectedPortal, setSelectedPortal] = useState<number | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -40,9 +40,12 @@ export default function AccountManager() {
   useEffect(() => {
     const fetchSavedPortals = async () => {
       try {
+        console.log('Fetching saved portals...');
         const userSessionData = await AsyncStorage.getItem('userSession');
         if (userSessionData) {
           const userData = JSON.parse(userSessionData);
+          console.log('User Data:', userData);
+
           const response = await fetch(`${API_BASE_URL}/api/fetchAccounts`, {
             method: 'POST',
             headers: {
@@ -53,12 +56,15 @@ export default function AccountManager() {
             }),
           });
 
+          console.log('API Response Status:', response.status);
+
           if (response.ok) {
             const data = await response.json();
-            console.log('Fetched portals:', data);
+            console.log('Fetched Portals Data:', data);
             if (data.success) {
               const savedPortals = Array.isArray(data.accounts) ? data.accounts : [data.accounts];
               setPortals(savedPortals.map((portal: any) => ({
+                id: portal.id, // Include the account id
                 name: portal.name,
                 token: portal.channel,
                 status: portal.status
@@ -314,10 +320,11 @@ export default function AccountManager() {
   // Create new account with scanned QR token
   const createAccount = async (token: string) => {
     try {
+      console.log('Creating account with token:', token);
       const userSessionData = await AsyncStorage.getItem('userSession');
       if (userSessionData) {
         const userData = JSON.parse(userSessionData);
-        setUserId(userData.user.user_id);
+        console.log('User Data:', userData);
 
         const selectedPortalName = portals[selectedPortalRef.current!].name;
         console.log('selectedPortalName', selectedPortalName);
@@ -332,7 +339,12 @@ export default function AccountManager() {
             channel: token
           }),
         });
+
+        console.log('API Response Status:', response.status);
+
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Error Response:', errorText);
           throw new Error('Failed to create account');
         }
         setRefreshTrigger(prev => prev + 1);
@@ -344,7 +356,9 @@ export default function AccountManager() {
 
   // Process scanned QR code data using the selectedPortalRef for the latest portal index
   const handleQRCodeScanned = ({ data }: { data: string }, fromImagePicker: boolean = false) => {
-    console.log('handleQRCodeScanned SelectedPortal', selectedPortalRef.current);
+    console.log('Scanned QR Code Data:', data);
+    console.log('Selected Portal Index:', selectedPortalRef.current);
+
     if (selectedPortalRef.current === null) {
       return; // Early return if selectedPortal is null
     }
@@ -353,6 +367,8 @@ export default function AccountManager() {
       setIsScanning(true);
 
       const isDuplicate = portals.some(portal => portal.token === data);
+      console.log('Is Duplicate Token:', isDuplicate);
+
       if (isDuplicate) {
         Alert.alert('Duplicate Channel', 'This channel has already been added.');
         setShowCamera(false);
@@ -360,17 +376,64 @@ export default function AccountManager() {
         return;
       }
 
-      const updatedPortals = [...portals];
-      updatedPortals[selectedPortalRef.current].token = data;
+      const updateToken = async () => {
+        try {
+          const userSessionData = await AsyncStorage.getItem('userSession');
+          if (userSessionData) {
+            const userData = JSON.parse(userSessionData);
+            const portalId = portals[selectedPortalRef.current!].id;
 
-      createAccount(data).then(() => {
-        Alert.alert('Success', 'Account successfully connected!');
-        if (!fromImagePicker) {
+            const response = await fetch(`${API_BASE_URL}/api/update-push-token`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                id: portalId,
+                token: data,
+              }),
+            });
+
+            console.log('API Response Status:', response.status);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('API Error Response:', errorText);
+              throw new Error(errorText);
+            }
+
+            const responseData = await response.json();
+            console.log('API Response Data:', responseData);
+
+            if (responseData.success) {
+              const updatedPortals = [...portals];
+              updatedPortals[selectedPortalRef.current!].token = data;
+              setPortals(updatedPortals);
+              Alert.alert('Success', 'Token updated successfully!');
+            } else {
+              Alert.alert('Error', responseData.message || 'Failed to update token');
+            }
+          }
+        } catch (error) {
+          console.error('Error updating token:', error);
+          Alert.alert('Error', 'Failed to update token. Please try again later.');
+        } finally {
           setShowCamera(false);
+          setIsScanning(false);
         }
-        setIsScanning(false);
-      });
+      };
+
+      updateToken();
     }
+  };
+
+  const rescanToken = (index: number) => {
+    console.log('Rescanning token for portal index:', index);
+    console.log('Portal data:', portals[index]);
+
+    // Set the selected portal and open the camera
+    setSelectedPortal(index);
+    setShowCamera(true);
   };
 
   if (!permission) {
@@ -519,6 +582,12 @@ export default function AccountManager() {
                             <View className="flex-row items-center p-1">
                               <Ionicons name="pencil-outline" size={16} color="#64748B" />
                               <Text className="ml-3 text-sm font-medium text-red-500">Rename</Text>
+                            </View>
+                          </MenuOption>
+                          <MenuOption onSelect={() => rescanToken(index)}>
+                            <View className="flex-row items-center p-1">
+                              <Ionicons name="refresh-circle-outline" size={16} color="#4F46E5" />
+                              <Text className="ml-3 text-sm font-medium text-red-500">Update token</Text>
                             </View>
                           </MenuOption>
                         </MenuOptions>

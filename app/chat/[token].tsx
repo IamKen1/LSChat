@@ -326,4 +326,6 @@ useEffect(() => {
       </View>
     </SafeAreaView>
   );
-};export default React.memo(ChatScreen);
+};
+
+export default React.memo(ChatScreen);
