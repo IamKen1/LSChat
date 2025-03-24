@@ -428,12 +428,52 @@ export default function AccountManager() {
   };
 
   const rescanToken = (index: number) => {
-    console.log('Rescanning token for portal index:', index);
-    console.log('Portal data:', portals[index]);
+    Alert.alert(
+      'Update Token',
+      'How would you like to update the token?',
+      [
+        {
+          text: 'Scan QR Code',
+          onPress: () => {
+            console.log('Rescanning token for portal index:', index);
+            console.log('Portal data:', portals[index]);
 
-    // Set the selected portal and open the camera
-    setSelectedPortal(index);
-    setShowCamera(true);
+            // Set the selected portal and open the camera
+            setSelectedPortal(index);
+            setShowCamera(true);
+          },
+        },
+        {
+          text: 'Pick from Gallery',
+          onPress: () => {
+            console.log('Picking image for portal index:', index);
+
+            // Set the selected portal and open the image picker
+            setSelectedPortal(index);
+            setIsScanning(false);
+
+            ImagePicker.launchImageLibraryAsync({
+              mediaTypes: "images",
+              allowsEditing: true,
+              quality: 1,
+            }).then(async result => {
+              if (!result.canceled) {
+                const scannedResults = await Camera.scanFromURLAsync(result.assets[0].uri);
+                if (scannedResults.length > 0) {
+                  const qrData = scannedResults[0].data;
+                  handleQRCodeScanned({ data: qrData }, true);
+                }
+              }
+            });
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (!permission) {
