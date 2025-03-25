@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Stat
 import { API_BASE_URL } from '../../config'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient'; 
 
 interface Contact {
     id: string;
@@ -51,7 +52,10 @@ function NewMessage() {
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FA]" style={{ paddingTop: StatusBar.currentHeight }}>
-            <View className="bg-[#8E24AA] p-4 shadow-lg">
+            <LinearGradient
+                colors={['#6B21A8', '#3B0764']}
+                className="p-4 shadow-lg"
+            >
                 <Text className="text-white text-xl font-bold mb-4">New Message</Text>
                 <View className="flex-row items-center bg-white/90 rounded-xl p-2 shadow-sm">
                     <Text className="text-[#8E24AA] text-xl mx-2">🔍</Text>
@@ -61,12 +65,18 @@ function NewMessage() {
                         placeholderTextColor="#94A3B8"
                     />
                 </View>
-            </View>
+            </LinearGradient>
             <ScrollView className="flex-1 px-2">
                 {contacts.map((contact) => (
                     <TouchableOpacity
                         key={contact.id}
                         className="flex-row items-center p-4 my-1 bg-white rounded-xl shadow-sm border border-gray-100"
+                        onPress={() =>
+                            router.push({
+                                pathname: "/chat/oneOnOne",
+                                params: { contactId: contact.id, contactName: contact.name },
+                            })
+                        }
                     >
                         <View className="w-12 h-12 bg-[#8E24AA]/10 rounded-full mr-4 items-center justify-center">
                             <Text className="text-[#8E24AA] text-lg font-semibold">
@@ -77,9 +87,18 @@ function NewMessage() {
                             <Text className="text-gray-800 font-semibold text-lg">{contact.name}</Text>
                             <Text className="text-gray-500">{contact.phone}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => router.push({ pathname: "/chat/[token]", params: { token: contact.id } })}>
-                            <Text className="text-[#8E24AA] text-xl">💬</Text>
-                        </TouchableOpacity>                    
+                        <TouchableOpacity
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/chat/oneOnOne",
+                                    params: { contactId: contact.id, contactName: contact.name },
+                                })
+                            }
+                        >
+                            <Text>
+                                <Text className="text-[#8E24AA] text-xl">💬</Text>
+                            </Text>
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
