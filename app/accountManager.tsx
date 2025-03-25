@@ -376,54 +376,60 @@ export default function AccountManager() {
         return;
       }
 
-      const updateToken = async () => {
-        try {
-          const userSessionData = await AsyncStorage.getItem('userSession');
-          if (userSessionData) {
-            const userData = JSON.parse(userSessionData);
-            const portalId = portals[selectedPortalRef.current!].id;
-
-            const response = await fetch(`${API_BASE_URL}/api/update-push-token`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                id: portalId,
-                token: data,
-              }),
-            });
-
-            console.log('API Response Status:', response.status);
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('API Error Response:', errorText);
-              throw new Error(errorText);
-            }
-
-            const responseData = await response.json();
-            console.log('API Response Data:', responseData);
-
-            if (responseData.success) {
-              const updatedPortals = [...portals];
-              updatedPortals[selectedPortalRef.current!].token = data;
-              setPortals(updatedPortals);
-              Alert.alert('Success', 'Token updated successfully!');
-            } else {
-              Alert.alert('Error', responseData.message || 'Failed to update token');
-            }
-          }
-        } catch (error) {
-          console.error('Error updating token:', error);
-          Alert.alert('Error', 'Failed to update token. Please try again later.');
-        } finally {
+      // Check if this is a new portal or updating an existing one
+      const selectedPortal = portals[selectedPortalRef.current];
+      if (!selectedPortal.token) {
+        // This is a new portal, create account
+        createAccount(data).finally(() => {
           setShowCamera(false);
           setIsScanning(false);
-        }
-      };
+        });
+      } else {
+        // This is an existing portal, update token
+        updateToken(data).finally(() => {
+          setShowCamera(false);
+          setIsScanning(false);
+        });
+      }
+    }
+  };
 
-      updateToken();
+  const updateToken = async (data: string) => {
+    try {
+      const userSessionData = await AsyncStorage.getItem('userSession');
+      if (userSessionData && selectedPortalRef.current !== null) {
+        const userData = JSON.parse(userSessionData);
+        const portalId = portals[selectedPortalRef.current].id;
+
+        const response = await fetch(`${API_BASE_URL}/api/update-push-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: portalId,
+            token: data,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText);
+        }
+
+        const responseData = await response.json();
+        if (responseData.success) {
+          const updatedPortals = [...portals];
+          updatedPortals[selectedPortalRef.current].token = data;
+          setPortals(updatedPortals);
+          Alert.alert('Success', 'Token updated successfully!');
+        } else {
+          Alert.alert('Error', responseData.message || 'Failed to update token');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating token:', error);
+      Alert.alert('Error', 'Failed to update token. Please try again later.');
     }
   };
 
