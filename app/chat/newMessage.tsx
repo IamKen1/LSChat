@@ -20,6 +20,7 @@ function NewMessage() {
     }, [])
 
     const [contacts, setContacts] = useState<Contact[]>([])
+    const [searchQuery, setSearchQuery] = useState('')
 
     const fetchContactLists = async () => {
         try {
@@ -50,6 +51,11 @@ function NewMessage() {
         fetchContactLists()
     }, [])
 
+    const filteredContacts = contacts.filter(contact =>
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.phone.includes(searchQuery)
+    )
+
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FA]" style={{ paddingTop: StatusBar.currentHeight }}>
             <LinearGradient
@@ -63,11 +69,13 @@ function NewMessage() {
                         className="flex-1 p-2 text-base"
                         placeholder="Search contacts..."
                         placeholderTextColor="#94A3B8"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                     />
                 </View>
             </LinearGradient>
             <ScrollView className="flex-1 px-2">
-                {contacts.map((contact) => (
+                {filteredContacts.map((contact) => (
                     <TouchableOpacity
                         key={contact.id}
                         className="flex-row items-center p-4 my-1 bg-white rounded-xl shadow-sm border border-gray-100"
