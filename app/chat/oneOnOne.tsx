@@ -28,6 +28,29 @@ interface MessageItemProps {
   contactId: string | null;
 }
 
+const formatTime = (dateString: string | undefined) => {
+  try {
+    if (!dateString) return '';
+
+    // Extract date and time parts
+    const [date] = dateString.split('T');
+    const timeWithMs = dateString.split('T')[1];
+    const [time] = timeWithMs.split('.');
+    const [hours, minutes] = time.split(':');
+
+    // Convert to 12-hour format
+    const hour = parseInt(hours);
+    const hour12 = hour % 12 || 12;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+
+    return `${hour12}:${minutes} ${ampm}`;
+  } catch (error) {
+    console.log('Date string:', dateString);
+    console.error('Error formatting time:', error);
+    return '';
+  }
+};
+
 const MessageItem: React.FC<MessageItemProps> = React.memo(({ item, contactId }) => (
   <View
     className={`p-3 m-2 w-64 rounded-lg ${
@@ -41,7 +64,7 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ item, contactId })
       {item.message}
     </Text>
     <Text className={`text-xs ${item.sender_id === contactId ? 'text-white' : 'text-gray-500'} mt-1 text-right`}>
-      {new Date(item.created_at).toLocaleTimeString()}
+      {formatTime(item.created_at)}
     </Text>
   </View>
 ));
@@ -70,16 +93,53 @@ export default function OneOnOneChat() {
   }, [contactId]);
 
   React.useEffect(() => {
-    initializePubNub();
+    // Initialize PubNub when contact is loaded
+    if (contact?.pubnub_channel) {
+      initializePubNub();
+      // Initial fetch of messages
+      fetchChatHistory(contact.pubnub_channel);
+    }
+    
     return () => {
       if (pubnub) {
         pubnub.removeAllListeners();
-        if (contact?.pubnub_channel) {
-          pubnub.unsubscribe({
-            channels: [contact.pubnub_channel],
-          });
-        }
+        pubnub.unsubscribe({
+          channels: [contact?.pubnub_channel || ''],
+        });
       }
+    };
+  }, [contact]); // Only re-run when contact changes
+
+  // Separate effect for PubNub listener
+  React.useEffect(() => {
+    if (!pubnub || !contact?.pubnub_channel) return;
+
+    console.log('Setting up PubNub listener for channel:', contact.pubnub_channel);
+
+    const handleMessage = async () => {
+      console.log('New message received, fetching updates...');
+      try {
+        await fetchChatHistory(contact.pubnub_channel);
+      } catch (error) {
+        console.error('Error fetching messages after PubNub notification:', error);
+      }
+    };
+
+    const listener = {
+      message: handleMessage
+    };
+
+    pubnub.addListener(listener);
+    pubnub.subscribe({
+      channels: [contact.pubnub_channel],
+      withPresence: false
+    });
+
+    console.log('PubNub subscription active');
+
+    return () => {
+      console.log('Cleaning up PubNub listener');
+      pubnub.removeListener(listener);
     };
   }, [pubnub, contact?.pubnub_channel]);
 
@@ -95,65 +155,6 @@ export default function OneOnOneChat() {
 
     setPubnub(pubnubInstance);
   };
-
-  React.useEffect(() => {
-    if (!pubnub || !contact?.pubnub_channel) return;
-
-    const listener = {
-      message: (m: MessageEvent) => {
-        const parsedMessage =
-          typeof m.message === 'string' ? { text: m.message } : m.message;
-
-        const newMessage: Message = {
-          id: String(m.timetoken),
-          sender_id: m.publisher || 'unknown',
-          message: parsedMessage.text || '',
-          created_at: new Date(m.timetoken / 10000).toISOString(),
-        };
-
-        setMessages(prev => [newMessage, ...prev]);
-        // Only scroll to bottom if we were already at the bottom
-        if (isAtBottom) {
-          setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
-        }
-      },
-    };
-
-    pubnub.addListener(listener);
-    pubnub.subscribe({
-      channels: [contact.pubnub_channel],
-      withPresence: true,
-    });
-
-    pubnub.fetchMessages(
-      {
-        channels: [contact.pubnub_channel],
-        count: 20,
-      },
-      (_status, response: PubNubFetchMessagesResponse | null) => {
-        if (response?.channels?.[contact.pubnub_channel]) {
-          const historyMessages = response.channels[contact.pubnub_channel]
-            .map((msg: FetchedMessage) => {
-              const parsedMessage =
-                typeof msg.message === 'string' ? { text: msg.message } : msg.message;
-
-              return {
-                id: String(msg.timetoken),
-                sender_id: msg.uuid || 'unknown',
-                message: parsedMessage.text || '',
-                created_at: new Date(msg.timetoken / 10000).toISOString(),
-              };
-            })
-            .reverse(); // Reverse the order for inverted list
-          setMessages(historyMessages);
-        }
-      }
-    );
-
-    return () => {
-      pubnub.removeListener(listener);
-    };
-  }, [pubnub, contact?.pubnub_channel, isAtBottom]);
 
   const fetchContactDetails = async () => {
     try {
@@ -179,22 +180,72 @@ export default function OneOnOneChat() {
     }
   };
 
+  const fetchChatHistory = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chatMessages/${token}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      const mappedMessages: Message[] = data.map((item: any) => ({
+        id: String(item.message_id),
+        sender_id: String(item.user_id),
+        message: item.message_content,
+        created_at: item.created_at,
+      }));
+
+      setMessages(mappedMessages.reverse());
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !pubnub || !contact?.pubnub_channel) return;
 
     try {
+      const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
+      if (!userData.user) throw new Error('User session not found');
+
+      console.log('Sending message to database...');
+      
+      // 1. Save to database first
+      const response = await fetch(`${API_BASE_URL}/api/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userData.user.user_id,
+          message: newMessage.trim(),
+          token: contact.pubnub_channel,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send message to the server');
+      }
+
+      console.log('Message saved to database, triggering PubNub...');
+
+      // 2. Trigger PubNub to notify other clients
       await pubnub.publish({
         channel: contact.pubnub_channel,
         message: {
-          text: newMessage.trim(),
-        },
+          type: 'NEW_MESSAGE',
+          timestamp: Date.now()
+        }
       });
 
+      // 3. Clear input
       setNewMessage('');
-      // Always scroll to bottom when sending a message
-      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
+
+      // 4. Fetch latest messages locally
+      await fetchChatHistory(contact.pubnub_channel);
+
+      if (isAtBottom) {
+        setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
+      }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in sendMessage:', error);
     }
   };
 

@@ -102,32 +102,73 @@ interface ChatListProps {
     lastMessageId: string;
   }>;
   handleChatPress: (token: string) => void;
+  oneOnOneChats: OneOnOneChat[];
+  handleOneOnOnePress: (contactId: string) => void;
 }
 
 // Renders the list of chat conversations
-const ChatList = React.memo<ChatListProps>(({ chatGroups, handleChatPress }) => (
+const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleChatPress, handleOneOnOnePress }) => (
   <View className="flex-1">
     <ScrollView className="flex-1">
-      {chatGroups.map((group) => (
-        <TouchableOpacity
-          key={group.id}
-          className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
-          onPress={() => handleChatPress(group.token)}
-        >
-          <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
-            <Text className="text-white text-xl font-bold">{group.name.split(' ').length > 1 ? group.name.split(' ').map(word => word[0]).slice(0, 2).join('') : group.name[0]}</Text>
-          </View>
-          <View className="flex-1">
-            <View className="flex-row justify-between mb-1">
-              <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
-              <Text className="text-xs text-gray-500">{group.time}</Text>
-            </View>
-            <Text className={`text-sm text-gray-500 ${group.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
-              {group.lastMessage}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+      {/* Portal Chats Section */}
+      {chatGroups.length > 0 && (
+        <View className="mb-4">
+          <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Portal Chats</Text>
+          {chatGroups.map((group) => (
+            <TouchableOpacity
+              key={group.id}
+              className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
+              onPress={() => handleChatPress(group.token)}
+            >
+              <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
+                <Text className="text-white text-xl font-bold">{group.name.split(' ').length > 1 ? group.name.split(' ').map(word => word[0]).slice(0, 2).join('') : group.name[0]}</Text>
+              </View>
+              <View className="flex-1">
+                <View className="flex-row justify-between mb-1">
+                  <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
+                  <Text className="text-xs text-gray-500">{group.time}</Text>
+                </View>
+                <Text className={`text-sm text-gray-500 ${group.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
+                  {group.lastMessage}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* One-on-One Chats Section */}
+      {oneOnOneChats.length > 0 && (
+        <View className="mb-4">
+          <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Direct Messages</Text>
+          {oneOnOneChats.map((chat) => (
+            <TouchableOpacity
+              key={chat.id}
+              className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
+              onPress={() => handleOneOnOnePress(chat.contact_id)}
+            >
+              <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
+                <Text className="text-white text-xl font-bold">
+                  {chat.name.split(' ').length > 1 
+                    ? chat.name.split(' ').map(word => word[0]).slice(0, 2).join('')
+                    : chat.name[0]}
+                </Text>
+              </View>
+              <View className="flex-1">
+                <View className="flex-row justify-between mb-1">
+                  <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">
+                    {chat.name}
+                  </Text>
+                  <Text className="text-xs text-gray-500">{chat.time}</Text>
+                </View>
+                <Text className={`text-sm text-gray-500 ${chat.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
+                  {chat.lastMessage}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </ScrollView>
     <TouchableOpacity
       className="absolute bottom-4 right-4 w-[60px] h-[60] bg-[#6B21A8] rounded-full justify-center items-center shadow-lg"
@@ -172,11 +213,30 @@ interface ChatState {
   unreadMessages: UnreadMessage[]; // Update type from any[] to UnreadMessage[]
   unreadCount: number;
   showNotifications: boolean;
+  oneOnOneChats: OneOnOneChat[];
 }
 
 interface NotificationState {
   permission: boolean;
   notifiedIds: Set<string>;
+}
+
+// Add these interfaces after the existing interfaces
+interface OneOnOneMessage {
+  message_id: string;
+  user_id: string;
+  message_content: string;
+  created_at: string;
+}
+
+interface OneOnOneChat {
+  id: string;
+  name: string;
+  contact_id: string;
+  lastMessage: string;
+  time: string;
+  isNewMessage: boolean;
+  lastMessageId: string;
 }
 
 // Main screen component managing chat functionality and user interface
@@ -195,6 +255,7 @@ const HomeScreen = React.memo(() => {
     unreadMessages: [],
     unreadCount: 0,
     showNotifications: false,
+    oneOnOneChats: [],
   });
 
   const [notificationState, setNotificationState] = useState<NotificationState>({
@@ -212,6 +273,8 @@ const HomeScreen = React.memo(() => {
   // Memoize callbacks
   const getUnreadCount = useCallback(async () => {
     let totalUnread = 0;
+    
+    // Count unread portal messages
     for (const group of chatState.groups) {
       try {
         const response = await fetch(`${API_BASE_URL}/api/messages/unread/${group.token}`);
@@ -223,8 +286,14 @@ const HomeScreen = React.memo(() => {
         console.error('Error fetching unread count:', error);
       }
     }
+  
+    // Add unread one-on-one messages
+    chatState.oneOnOneChats.forEach(chat => {
+      if (chat.isNewMessage) totalUnread += 1;
+    });
+  
     return totalUnread;
-  }, [chatState.groups]);
+  }, [chatState.groups, chatState.oneOnOneChats]);
 
   useEffect(() => {
     const fetchUnreadMessages = async () => {
@@ -534,11 +603,99 @@ const HomeScreen = React.memo(() => {
             }));
           }
         }
+        await fetchOneOnOneMessages(userData.user.user_id);
       }
     } catch (error) {
       console.error('Error fetching saved portals:', error);
     }
   };
+
+  // Add function to handle one-on-one chat press
+  const handleOneOnOnePress = (contactId: string) => {
+    router.push({
+      pathname: "/chat/oneOnOne",
+      params: { contactId }
+    });
+  };
+
+  // Add function to fetch one-on-one messages
+  const fetchOneOnOneMessages = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/fetch-contact-lists?user_id=${userId}`);
+      if (!response.ok) throw new Error('Failed to fetch contacts');
+
+      const contacts = await response.json();
+      // Filter out the logged-in user from contacts
+      const filteredContacts = contacts.filter((contact: any) => 
+        String(contact.contact_id) !== String(userId)
+      );
+
+      const messagePromises = filteredContacts.map(async (contact: any) => {
+        try {
+          const messagesResponse = await fetch(`${API_BASE_URL}/api/chatMessages/${contact.pubnub_channel}`);
+          if (!messagesResponse.ok) return null;
+
+          const messages = await messagesResponse.json();
+          if (messages.length === 0) return null;
+
+          // Filter out messages not involving the current user
+          const validMessages = messages.filter((msg: any) => 
+            String(msg.user_id) === String(userId) || String(msg.user_id) === String(contact.contact_id)
+          );
+
+          if (validMessages.length === 0) return null;
+
+          const lastMessage = validMessages[validMessages.length - 1];
+          const uniqueId = `${contact.pubnub_channel}_${contact.contact_id}`;
+
+          return {
+            id: uniqueId, // Using a more unique identifier
+            name: contact.contact_full_name,
+            contact_id: String(contact.contact_id),
+            lastMessage: lastMessage.message_content,
+            time: new Date(lastMessage.created_at).toLocaleString('en-US', {
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: true,
+              timeZone: 'UTC',
+            }),
+            isNewMessage: messages.some((msg: any) => msg.is_read === 0 && String(msg.user_id) !== String(userId)),
+            lastMessageId: String(lastMessage.message_id)
+          };
+        } catch (error) {
+          console.error('Error fetching messages for contact:', error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(messagePromises);
+      const validChats = results.filter((chat): chat is OneOnOneChat => 
+        chat !== null && chat.lastMessage !== null
+      );
+
+      setChatState(prevState => ({
+        ...prevState,
+        oneOnOneChats: validChats,
+      }));
+    } catch (error) {
+      console.error('Error fetching one-on-one messages:', error);
+    }
+  };
+
+  // Add a new useEffect for fetching one-on-one messages
+  useEffect(() => {
+    const fetchData = async () => {
+      const userSessionData = await AsyncStorage.getItem('userSession');
+      if (userSessionData) {
+        const userData = JSON.parse(userSessionData);
+        await fetchOneOnOneMessages(userData.user.user_id);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Navigates to account management screen
   const navigateToAccount = () => {
@@ -687,7 +844,9 @@ const HomeScreen = React.memo(() => {
       {userState.activeTab === 'Chats' ? (
         <ChatList
           chatGroups={chatState.groups}
+          oneOnOneChats={chatState.oneOnOneChats}
           handleChatPress={handleChatPress}
+          handleOneOnOnePress={handleOneOnOnePress}
         />
       ) : userState.activeTab === 'Contacts' ? (
         <ContactLists />
