@@ -4,10 +4,32 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from "react-native";
 import { initializeNotifications } from "../src/notifications/useNotification";
 import '../assets/global.css';
+import * as Notifications from 'expo-notifications';
+import { router } from "expo-router";
 
- function RootLayout() {
+function RootLayout() {
   useEffect(() => {
+    // Initialize notifications
     initializeNotifications();
+    
+    // Handle notification clicks
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      
+      if (data?.contactId && data?.screen === 'oneOnOne') {
+        router.push({
+          pathname: '/chat/oneOnOne',
+          params: { contactId: data.contactId }
+        });
+      } else if (data?.channel) {
+        router.push({
+          pathname: "/chat/[token]",
+          params: { token: data.channel }
+        });
+      }
+    });
+    
+    return () => subscription.remove();
   }, []);
   
   return (
@@ -22,4 +44,5 @@ import '../assets/global.css';
     </View>
   );
 }
+
 export default RootLayout;

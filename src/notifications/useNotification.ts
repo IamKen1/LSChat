@@ -1,9 +1,10 @@
-import { PermissionsAndroid, Platform, AppRegistry } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { getApp } from '@react-native-firebase/app';
-import { getMessaging, onMessage, isSupported } from '@react-native-firebase/messaging';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 
+// Types for notification handling
 interface NotificationHandlerResponse {
   shouldShowAlert: boolean;
   shouldPlaySound: boolean;
@@ -37,7 +38,7 @@ const DEFAULT_CONFIG: NotificationConfig = {
   importance: Notifications.AndroidImportance.HIGH,
 };
 
-// Ensure Expo Notifications are handled correctly
+// Set up notification handler
 Notifications.setNotificationHandler({
   handleNotification: async (): Promise<NotificationHandlerResponse> => ({
     shouldShowAlert: true,
@@ -47,13 +48,47 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Modified showPopup to work with data-only messages
+// Show local notifications from anywhere in the app
+export const showLocalNotification = async (
+  title: string,
+  body: string,
+  data?: Record<string, any>
+): Promise<string | null> => {
+  try {
+    const notificationContent: PopupNotification = {
+      title,
+      body,
+      data: data ?? {},
+      android: {
+        channelId: DEFAULT_CONFIG.channelId,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        sound: true,
+        vibrate: [0, 250, 250, 250],
+        color: '#FF231F7C',
+        smallIcon: 'ic_notification',
+      },
+    };
+
+    const identifier = `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    await Notifications.scheduleNotificationAsync({
+      content: notificationContent,
+      trigger: null,
+      identifier,
+    });
+    
+    return identifier;
+  } catch (error) {
+    console.error('Failed to show notification:', error);
+    return null;
+  }
+};
+
+// Display notifications from Firebase data messages
 const showPopup = async (remoteMessage: FirebaseMessagingTypes.RemoteMessage): Promise<void> => {
-  // Extract title and body from data payload, converting to string.
   const title: string = remoteMessage.data?.title ? String(remoteMessage.data.title) : '';
   const body: string = remoteMessage.data?.message ? String(remoteMessage.data.message) : '';
 
-  // If no title and body, nothing to show.
   if (!title && !body) return;
 
   try {
@@ -71,16 +106,14 @@ const showPopup = async (remoteMessage: FirebaseMessagingTypes.RemoteMessage): P
       },
     };
 
-    // Check for duplicate notifications using the messageId as identifier.
     const existingNotifications = await Notifications.getPresentedNotificationsAsync();
     if (existingNotifications.some((n) => n.request.identifier === remoteMessage.messageId)) {
-      console.log('Skipping duplicate notification:', remoteMessage.messageId);
       return;
     }
 
     await Notifications.scheduleNotificationAsync({
       content: notificationContent,
-      trigger: null, // Show immediately
+      trigger: null,
       identifier: remoteMessage.messageId,
     });
   } catch (error) {
@@ -89,27 +122,18 @@ const showPopup = async (remoteMessage: FirebaseMessagingTypes.RemoteMessage): P
 };
 
 // Background message handler
-const backgroundMessageHandler = async (remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+export const backgroundMessageHandler = async (remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
   if (remoteMessage.data?.suppressNotification === 'true') return;
-
-  console.log('Handling background message:', remoteMessage);
   await showPopup(remoteMessage);
   return Promise.resolve();
 };
 
-// Register headless task immediately on module load
-AppRegistry.registerHeadlessTask(
-  'ReactNativeFirebaseMessagingHeadlessTask',
-  () => backgroundMessageHandler
-);
-
-// Initialize Notifications & Prevent Duplicates
+// Initialize notifications system
 export const initializeNotifications = async () => {
   try {
     const hasPermission = await requestUserPermission();
     if (!hasPermission) return null;
 
-    // Create/update notification channel
     await Notifications.setNotificationChannelAsync(DEFAULT_CONFIG.channelId, {
       name: DEFAULT_CONFIG.channelName,
       importance: DEFAULT_CONFIG.importance,
@@ -119,30 +143,21 @@ export const initializeNotifications = async () => {
       enableLights: true,
       sound: 'default',
     });
-    console.log('Notifications channel created:', DEFAULT_CONFIG.channelId);
 
     const app = getApp();
     const messagingInstance = getMessaging(app);
-
-    // Ensure Firebase does NOT auto-show notifications
     await messagingInstance.setAutoInitEnabled(false);
     await messagingInstance.setDeliveryMetricsExportToBigQuery(false);
 
-    const token = await messagingInstance.getToken();
-    console.log('FCM Token:', token);
+    if (Platform.OS === 'android') {
+      messagingInstance.setBackgroundMessageHandler(backgroundMessageHandler);
+    }
 
-    // Set background message handler
-    messagingInstance.setBackgroundMessageHandler(backgroundMessageHandler);
-
-    // Foreground handler using modular API
     return onMessage(messagingInstance, async (remoteMessage) => {
       if (remoteMessage.data?.suppressNotification === 'true') return;
-
-      console.log('Foreground message received:', remoteMessage);
-
+      
       const existingNotifications = await Notifications.getPresentedNotificationsAsync();
       if (existingNotifications.some((n) => n.request.identifier === remoteMessage.messageId)) {
-        console.log('Skipping duplicate foreground notification:', remoteMessage.messageId);
         return;
       }
 
@@ -154,19 +169,14 @@ export const initializeNotifications = async () => {
   }
 };
 
-// Request Permission for Notifications
+// Request notification permissions
 const requestUserPermission = async () => {
   try {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
       );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Notification permission granted');
-        return true;
-      }
-      console.log('Notification permission denied');
-      return false;
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
     return true;
   } catch (error) {

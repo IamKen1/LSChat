@@ -113,7 +113,7 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleC
       {/* Portal Chats Section */}
       {chatGroups.length > 0 && (
         <View className="mb-4">
-          <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Portal Chats</Text>
+          {/* <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Portal Chats</Text> */}
           {chatGroups.map((group) => (
             <TouchableOpacity
               key={group.id}
@@ -125,10 +125,10 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleC
               </View>
               <View className="flex-1">
                 <View className="flex-row justify-between mb-1">
-                  <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
+                  <Text className={`text-base ${group.isNewMessage ? 'font-bold' : 'font-semibold'} flex-1 mr-2`} numberOfLines={1} ellipsizeMode="tail">{group.name}</Text>
                   <Text className="text-xs text-gray-500">{group.time}</Text>
                 </View>
-                <Text className={`text-sm text-gray-500 ${group.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
+                <Text className={`text-sm ${group.isNewMessage ? 'font-bold text-black' : 'text-gray-500'}`} numberOfLines={1}>
                   {group.lastMessage}
                 </Text>
               </View>
@@ -140,11 +140,11 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleC
       {/* One-on-One Chats Section */}
       {oneOnOneChats.length > 0 && (
         <View className="mb-4">
-          <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Direct Messages</Text>
+          {/* <Text className="text-lg font-semibold px-4 py-2 text-gray-700">Direct Messages</Text> */}
           {oneOnOneChats.map((chat) => (
             <TouchableOpacity
               key={chat.id}
-              className="flex-row p-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
+              className="flex-row px-4 pb-4 border-b border-gray-200 bg-white shadow-sm rounded-lg m-2"
               onPress={() => handleOneOnOnePress(chat.contact_id)}
             >
               <View className="w-[50px] h-[50px] rounded-full bg-[#6B21A8] justify-center items-center mr-3">
@@ -156,15 +156,16 @@ const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleC
               </View>
               <View className="flex-1">
                 <View className="flex-row justify-between mb-1">
-                  <Text className="text-base font-semibold flex-1 mr-2" numberOfLines={1} ellipsizeMode="tail">
+                  <Text className={`text-base ${chat.isNewMessage ? 'font-bold' : 'font-semibold'} flex-1 mr-2`} numberOfLines={1} ellipsizeMode="tail">
                     {chat.name}
                   </Text>
                   <Text className="text-xs text-gray-500">{chat.time}</Text>
                 </View>
-                <Text className={`text-sm text-gray-500 ${chat.isNewMessage ? 'font-bold' : ''}`} numberOfLines={1}>
+                <Text className={`text-sm ${chat.isNewMessage ? 'font-bold text-black' : 'text-gray-500'}`} numberOfLines={1}>
                   {chat.lastMessage}
                 </Text>
               </View>
+              {/* Blue dot indicator removed */}
             </TouchableOpacity>
           ))}
         </View>
@@ -227,6 +228,7 @@ interface OneOnOneMessage {
   user_id: string;
   message_content: string;
   created_at: string;
+  is_read?: number; // Add is_read field to track read status
 }
 
 interface OneOnOneChat {
@@ -237,6 +239,7 @@ interface OneOnOneChat {
   time: string;
   isNewMessage: boolean;
   lastMessageId: string;
+  pubnub_channel?: string; // Add this to access the channel later
 }
 
 // Main screen component managing chat functionality and user interface
@@ -611,11 +614,46 @@ const HomeScreen = React.memo(() => {
   };
 
   // Add function to handle one-on-one chat press
-  const handleOneOnOnePress = (contactId: string) => {
-    router.push({
-      pathname: "/chat/oneOnOne",
-      params: { contactId }
-    });
+  const handleOneOnOnePress = async (contactId: string) => {
+    try {
+      // Find the chat to get the PubNub channel
+      const chat = chatState.oneOnOneChats.find(c => c.contact_id === contactId);
+      if (chat) {
+        const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
+        if (userData.user) {
+          // Mark messages as read with the new API endpoint
+          await fetch(`${API_BASE_URL}/api/update-chat-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: chat.pubnub_channel,
+              user_id: userData.user.user_id
+            }),
+          });
+
+          // Update local state
+          setChatState(prevState => ({
+            ...prevState,
+            oneOnOneChats: prevState.oneOnOneChats.map(c => 
+              c.contact_id === contactId ? { ...c, isNewMessage: false } : c
+            )
+          }));
+        }
+      }
+
+      // Navigate to the chat
+      router.push({
+        pathname: "/chat/oneOnOne",
+        params: { contactId }
+      });
+    } catch (error) {
+      console.error('Error marking one-on-one messages as read:', error);
+      // Still navigate even if there's an error
+      router.push({
+        pathname: "/chat/oneOnOne",
+        params: { contactId }
+      });
+    }
   };
 
   // Add function to fetch one-on-one messages
@@ -648,18 +686,29 @@ const HomeScreen = React.memo(() => {
           const lastMessage = validMessages[validMessages.length - 1];
           const uniqueId = `${contact.pubnub_channel}_${contact.contact_id}`;
 
+          // Check if there are any unread messages from the contact
+          const hasUnreadMessages = validMessages.some(
+            (msg: any) => 
+              (msg.is_read === 0 || !msg.is_read) && 
+              String(msg.user_id) === String(contact.contact_id)
+          );
+
           return {
-            id: uniqueId, // Using a more unique identifier
+            id: uniqueId, 
             name: contact.contact_full_name,
             contact_id: String(contact.contact_id),
+            pubnub_channel: contact.pubnub_channel, // Add this to access the channel later
             lastMessage: lastMessage.message_content,
             time: new Date(lastMessage.created_at).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'numeric',
+              day: 'numeric',
               hour: 'numeric',
               minute: 'numeric',
               hour12: true,
               timeZone: 'UTC',
             }),
-            isNewMessage: messages.some((msg: any) => msg.is_read === 0 && String(msg.user_id) !== String(userId)),
+            isNewMessage: hasUnreadMessages,
             lastMessageId: String(lastMessage.message_id)
           };
         } catch (error) {
