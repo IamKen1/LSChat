@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Text, NativeSyntheticEvent, TextInputKeyPressEventData, AppState, Image } from 'react-native';
+import { View, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Text, NativeSyntheticEvent, TextInputKeyPressEventData, AppState, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -109,6 +109,8 @@ export default function OneOnOneChat() {
   const [isAtBottom, setIsAtBottom] = React.useState(true);
   const [selectedFile, setSelectedFile] = React.useState<{ uri: string; name?: string; type?: string } | null>(null);
   const [inputContent, setInputContent] = React.useState<string>(''); // For text input
+  const [loadingMessages, setLoadingMessages] = React.useState<boolean>(true);
+  const [sendingMessage, setSendingMessage] = React.useState<boolean>(false);
   
   // Refs
   const flatListRef = React.useRef<FlatList<Message>>(null);
@@ -292,6 +294,7 @@ export default function OneOnOneChat() {
     token: string,
     options: { skipMarkRead?: boolean; isAfterSend?: boolean } = {}
   ): Promise<boolean> => {
+    setLoadingMessages(true);
     try {
       console.log('Fetching chat history for token:', token); // Debug log
       const response = await fetch(`${API_BASE_URL}/api/chatMessages/${token}`);
@@ -344,6 +347,8 @@ export default function OneOnOneChat() {
     } catch (error) {
       console.error('Error fetching chat history:', error); // Debug log
       return false;
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -356,6 +361,7 @@ export default function OneOnOneChat() {
       return;
     }
   
+    setSendingMessage(true);
     try {
       const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
       if (!userData.user) throw new Error('User session not found');
@@ -416,6 +422,8 @@ export default function OneOnOneChat() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
+    } finally {
+      setSendingMessage(false);
     }
   };
   
@@ -487,19 +495,25 @@ export default function OneOnOneChat() {
           </View>
         </LinearGradient>
 
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => <MessageItem item={item} contactId={contactId} />}
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 10 }}
-          inverted={true}
-          onScroll={handleScroll}
-          onScrollBeginDrag={() => setIsAtBottom(false)}
-          initialNumToRender={20}
-          maxToRenderPerBatch={20}
-          windowSize={21}
-        />
+        {loadingMessages ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#6B21A8" />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => <MessageItem item={item} contactId={contactId} />}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 10 }}
+            inverted={true}
+            onScroll={handleScroll}
+            onScrollBeginDrag={() => setIsAtBottom(false)}
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={21}
+          />
+        )}
 
         <View className="flex-row items-center p-4 border-t border-gray-200">
           <TouchableOpacity className="mr-2" onPress={pickFile}>
@@ -535,13 +549,17 @@ export default function OneOnOneChat() {
           <TouchableOpacity 
             onPress={() => sendMessage()} 
             className="ml-3 p-2"
-            disabled={!inputContent.trim() && !selectedFile}
+            disabled={sendingMessage}
           >
-            <Ionicons 
-              name="send" 
-              size={24} 
-              color={(inputContent.trim() || selectedFile) ? '#6B21A8' : '#CBD5E0'} 
-            />
+            {sendingMessage ? (
+              <ActivityIndicator size="small" color="#6B21A8" />
+            ) : (
+              <Ionicons 
+                name="send" 
+                size={24} 
+                color={(inputContent.trim() || selectedFile) ? '#6B21A8' : '#CBD5E0'} 
+              />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
