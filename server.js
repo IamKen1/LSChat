@@ -63,3 +63,43 @@ app.post('/api/sendMessage', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Error sending message', sqlError: error.message, params: req.body });
   }
 });
+
+app.post('/api/sendGroupMessage', async (req, res) => {
+  try {
+    await poolConnect;
+    const { group_id, sender_id, message_content } = req.body;
+
+    const userResult = await pool.request()
+      .input('user_id', sql.Int, sender_id)
+      .query(`SELECT first_name, last_name FROM Users WHERE user_id = @user_id`);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.recordset[0];
+    const sender_name = `${user.first_name} ${user.last_name}`;
+
+    const result = await pool.request()
+      .input('group_id', sql.Int, group_id)
+      .input('sender_id', sql.Int, sender_id)
+      .input('message_content', sql.NVarChar(sql.MAX), message_content)
+      .query(`
+        INSERT INTO group_messages (group_id, sender_id, message_content)
+        VALUES (@group_id, @sender_id, @message_content);
+        SELECT SCOPE_IDENTITY() AS message_id;
+      `);
+
+    const messageId = result.recordset[0].message_id;
+
+    res.json({
+      success: true,
+      message_id: messageId,
+      sender_name: sender_name,
+      message: 'Message sent successfully'
+    });
+  } catch (error) {
+    console.error('Error sending group message:', error);
+    res.status(500).json({ error: 'Failed to send group message', details: error.message });
+  }
+});

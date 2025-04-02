@@ -8,6 +8,8 @@ import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../config';
 import ContactLists from './contact-lists';
+import GroupList from './groups/GroupList';
+import GroupInvitations from './components/GroupInvitations';
 
 interface HeaderProps {
   firstName: string;
@@ -66,7 +68,7 @@ interface TabBarProps {
 
 // Displays navigation tabs for different sections of the app
 const TabBar = React.memo<TabBarProps>(({ activeTab, setActiveTab, showComingSoonAlert }) => (
-  <View className="flex-row bg-secondary p-2 my-1  shadow-md">
+  <View className="flex-row bg-secondary p-2 my-1 shadow-md">
     <TouchableOpacity
       className={`flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2 ${activeTab === 'Chats' ? 'bg-gray-200 shadow-sm' : ''}`}
       onPress={() => setActiveTab('Chats')}
@@ -75,11 +77,11 @@ const TabBar = React.memo<TabBarProps>(({ activeTab, setActiveTab, showComingSoo
       <Text className={`text-sm font-medium ${activeTab === 'Chats' ? 'text-dark' : 'text-gray-500'}`}>Chats</Text>
     </TouchableOpacity>
     <TouchableOpacity
-      className="flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2"
-      onPress={() => showComingSoonAlert('Groups')}
+      className={`flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2 ${activeTab === 'Groups' ? 'bg-gray-200 ' : ''}`}
+      onPress={() => setActiveTab('Groups')}
     >
-      <Icon name="group" size={24} color="#666666" />
-      <Text className="text-sm font-medium text-gray-500">Groups</Text>
+      <Icon name="group" size={24} color={activeTab === 'Groups' ? '#6B21A8' : '#666666'} />
+      <Text className={`text-sm font-medium ${activeTab === 'Groups' ? 'text-dark' : 'text-gray-500'}`}>Groups</Text>
     </TouchableOpacity>
     <TouchableOpacity
       className="flex-1 py-2 items-center rounded-lg flex-row justify-center gap-2"
@@ -104,12 +106,16 @@ interface ChatListProps {
   handleChatPress: (token: string) => void;
   oneOnOneChats: OneOnOneChat[];
   handleOneOnOnePress: (contactId: string) => void;
+  refreshGroupsData: () => void; // Add this prop
 }
 
 // Renders the list of chat conversations
-const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleChatPress, handleOneOnOnePress }) => (
+const ChatList = React.memo<ChatListProps>(({ chatGroups, oneOnOneChats, handleChatPress, handleOneOnOnePress, refreshGroupsData }) => (
   <View className="flex-1">
     <ScrollView className="flex-1">
+      {/* Group Invitations Section */}
+      <GroupInvitations onInvitationResponded={refreshGroupsData} />
+      
       {/* Portal Chats Section */}
       {chatGroups.length > 0 && (
         <View className="mb-4">
@@ -829,6 +835,20 @@ const HomeScreen = React.memo(() => {
     );
   };
 
+  // Add the refreshGroupsData function inside the component
+  const refreshGroupsData = async () => {
+    try {
+      const userSessionData = await AsyncStorage.getItem('userSession');
+      if (userSessionData) {
+        const userData = JSON.parse(userSessionData);
+        // We can now access fetchSavedPortals since it's in the same scope
+        fetchSavedPortals();
+      }
+    } catch (error) {
+      console.error('Error refreshing group data:', error);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-secondary">
       <Header
@@ -896,10 +916,21 @@ const HomeScreen = React.memo(() => {
           oneOnOneChats={chatState.oneOnOneChats}
           handleChatPress={handleChatPress}
           handleOneOnOnePress={handleOneOnOnePress}
+          refreshGroupsData={refreshGroupsData} // Pass the function as prop
         />
+      ) : userState.activeTab === 'Groups' ? (
+        <GroupList />
       ) : userState.activeTab === 'Contacts' ? (
         <ContactLists />
       ) : null}
+      {userState.activeTab === 'Groups' && (
+        <TouchableOpacity
+          className="absolute bottom-4 right-4 w-[60px] h-[60px] bg-[#6B21A8] rounded-full justify-center items-center shadow-lg"
+          onPress={() => router.push('/groups/createGroup')}
+        >
+          <Icon name="group-add" size={28} color="white" />
+        </TouchableOpacity>
+      )}
       <View className="items-center pb-3">
         <Text className="text-black/70 text-sm">Powered by ICTD</Text>
       </View>

@@ -2,6 +2,8 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, SectionList, SectionListData, Alert } from 'react-native'
 import { API_BASE_URL } from '@/config'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { router } from 'expo-router'; // Add this import
 
 interface Contact {
     id: string
@@ -242,6 +244,16 @@ const ContactLists = () => {
                         </Text>
                     </View>
                 )}
+                <TouchableOpacity
+                    onPress={() =>
+                        router.push({ // Use `router` here
+                            pathname: '/groups/addToGroup',
+                            params: { contactId: item.id, contactName: item.name },
+                        })
+                    }
+                >
+                    <Icon name="group-add" size={24} color="#6B21A8" />
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
     ), [showDropdown])
