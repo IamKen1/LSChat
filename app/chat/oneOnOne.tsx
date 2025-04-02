@@ -10,6 +10,7 @@ import { API_BASE_URL, PUBNUB_PUBLISH_KEY, PUBNUB_SUBSCRIBE_KEY } from '../../co
 import { showLocalNotification } from '../../src/notifications/useNotification';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import { FlashList } from '@shopify/flash-list';
 
 // Types
 interface Message {
@@ -42,12 +43,12 @@ const formatTime = (dateString: string | undefined) => {
     const hour = parseInt(hours);
     const hour12 = hour % 12 || 12;
     const ampm = hour >= 12 ? 'PM' : 'AM';
-    return `${hour12}:${minutes} ${ampm}`;
+    const [year, month, day] = date.split('-');
+    return `${month}/${day}/${year} ${hour12}:${minutes} ${ampm}`;
   } catch (error) {
     return '';
   }
 };
-
 // Message bubble component
 const MessageItem: React.FC<MessageItemProps> = React.memo(({ item, contactId }) => {
   const isImageUrl = (url: string) => /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(url);
@@ -113,7 +114,7 @@ export default function OneOnOneChat() {
   const [sendingMessage, setSendingMessage] = React.useState<boolean>(false);
   
   // Refs
-  const flatListRef = React.useRef<FlatList<Message>>(null);
+  const flatListRef = React.useRef<FlashList<Message>>(null);
   const appState = React.useRef(AppState.currentState);
   const lastMessageIdRef = React.useRef<string | null>(null);
   const isScreenActiveRef = React.useRef<boolean>(true);
@@ -379,7 +380,7 @@ export default function OneOnOneChat() {
           uri: selectedFile.uri,
           name: selectedFile.name || selectedFile.uri.split('/').pop() || 'file',
           type: selectedFile.type || 'application/octet-stream',
-        });
+        } as any);
       }
   
       if (inputContent.trim()) {
@@ -429,27 +430,27 @@ export default function OneOnOneChat() {
   
   const pickFile = async () => {
     try {
-      console.log('Opening file picker...'); // Debug log
+      console.log('Opening file picker...');
       const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
   
       if (result.assets && result.assets.length > 0) {
-        const file = result.assets[0]; // Extract the first file from the assets array
+        const file = result.assets[0]; 
         if (file.uri) {
-          console.log('File selected:', file); // Debug log
-          setSelectedFile({ uri: file.uri, name: file.name, type: file.mimeType }); // Set the selected file for preview
+          console.log('File selected:', file); 
+          setSelectedFile({ uri: file.uri, name: file.name, type: file.mimeType }); 
         } else {
-          console.error('No valid file URI found in assets:', result); // Debug log
+          console.error('No valid file URI found in assets:', result); 
           alert('Failed to select a file. Please try again.');
         }
       } else if (result.canceled) {
         console.log('File selection canceled by the user');
         alert('File selection was canceled. Please try again.');
       } else {
-        console.error('Unexpected result from DocumentPicker:', result); // Debug log
+        console.error('Unexpected result from DocumentPicker:', result);
         alert('Failed to select a file. Please try again.');
       }
     } catch (error) {
-      console.error('Error picking file:', error); // Debug log
+      console.error('Error picking file:', error); 
       alert('An error occurred while selecting a file. Please ensure the file picker is working correctly.');
     }
   };
@@ -491,7 +492,7 @@ export default function OneOnOneChat() {
                 </TouchableOpacity>
               </View>
             </View>
-            <Text className="text-white text-sm">{contact?.phone}</Text>
+            <Text className="text-white text-sm mt-1">{contact?.phone}</Text>
           </View>
         </LinearGradient>
 
@@ -500,19 +501,26 @@ export default function OneOnOneChat() {
             <ActivityIndicator size="large" color="#6B21A8" />
           </View>
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => <MessageItem item={item} contactId={contactId} />}
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 10 }}
-            inverted={true}
-            onScroll={handleScroll}
-            onScrollBeginDrag={() => setIsAtBottom(false)}
-            initialNumToRender={20}
-            maxToRenderPerBatch={20}
-            windowSize={21}
-          />
+          <View className="flex-1">
+            <FlashList
+              ref={flatListRef} 
+              data={messages}
+              estimatedItemSize={100}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => <MessageItem item={item} contactId={contactId} />}
+              contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 10 }}
+              inverted={true}
+              onScroll={handleScroll}
+              onScrollBeginDrag={() => setIsAtBottom(false)}
+              viewabilityConfig={{
+                viewAreaCoveragePercentThreshold: 50,
+              }}
+              estimatedListSize={{
+                width: 350,
+                height: 500
+              }}
+            />
+          </View>
         )}
 
         <View className="flex-row items-center p-4 border-t border-gray-200">
