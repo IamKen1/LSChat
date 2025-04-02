@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PubNub from 'pubnub';
@@ -94,7 +93,14 @@ const GroupChat = () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/groupMessages/${groupId}`);
         const data = await response.json();
-        if (response.ok) setMessages(data.reverse());
+        if (response.ok) {
+          // Ensure sender_id is always a string in the messages
+          const formattedMessages = data.map((msg: any) => ({
+            ...msg,
+            sender_id: String(msg.sender_id)
+          }));
+          setMessages(formattedMessages.reverse());
+        }
       } catch (error) {
         console.error('Error fetching group messages:', error);
       } finally {
@@ -157,56 +163,95 @@ const GroupChat = () => {
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View
-      className={`p-3 m-2 w-64 rounded-lg ${
-        item.sender_id === currentUserId ? 'bg-[#6B21A8] self-end' : 'bg-gray-200 self-start'
-      }`}
-    >
-      <Text className="text-xs text-gray-500">{item.sender_name}</Text>
-      <Text className={`text-sm ${item.sender_id === currentUserId ? 'text-white' : 'text-black'}`}>
-        {item.message}
-      </Text>
-      <Text className={`text-xs ${item.sender_id === currentUserId ? 'text-white/70' : 'text-gray-400'} mt-1 text-right`}>
-        {new Date(item.created_at).toLocaleTimeString()}
-      </Text>
-    </View>
-  );
+  const renderMessage = ({ item }: { item: Message }) => {
+    // Convert both IDs to strings for consistent comparison
+    const isCurrentUser = String(item.sender_id) === String(currentUserId);
+    
+    return (
+      <View
+        className={`p-3 m-2 w-64 rounded-lg ${
+          isCurrentUser ? 'bg-[#6B21A8] self-end' : 'bg-gray-200 self-start'
+        }`}
+      >
+        <Text className={`text-xs ${isCurrentUser ? 'text-white/70' : 'text-gray-500'}`}>{item.sender_name}</Text>
+        <Text className={`text-sm ${isCurrentUser ? 'text-white' : 'text-black'}`}>
+          {item.message}
+        </Text>
+        <Text className={`text-xs ${isCurrentUser ? 'text-white/70' : 'text-gray-400'} mt-1 text-right`}>
+          {new Date(item.created_at).toLocaleTimeString()}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="bg-[#6B21A8] p-4 flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <Text className="text-white text-xl font-bold ml-2">{groupName}</Text>
-        </View>
+      <View className="bg-[#6B21A8] p-4 flex-row items-center">
+        <TouchableOpacity onPress={() => router.back()} className="p-2">
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text className="text-white text-xl font-bold ml-2">{groupName}</Text>
+        <View className="flex-1" />
         <Menu>
           <MenuTrigger customStyles={{
             triggerWrapper: {
               padding: 8,
+              borderRadius: 20,
             },
+            triggerTouchable: {
+              activeOpacity: 0.7,
+            }
           }}>
             <Ionicons name="ellipsis-vertical" size={24} color="white" />
           </MenuTrigger>
+          
           <MenuOptions customStyles={{
             optionsContainer: {
-              borderRadius: 10,
-              padding: 5,
-              width: 180,
+              borderRadius: 12,
+              padding: 6,
+              width: 220,
+              backgroundColor: 'white',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
             },
+            optionWrapper: {
+              padding: 8,
+            }
           }}>
             <MenuOption onSelect={() => handleMenuOption('members')}>
-              <View className="flex-row items-center py-2 px-1">
-                <Ionicons name="people" size={22} color="#6B21A8" />
+              <View className="flex-row items-center py-3 px-2">
+                <View className="w-8 h-8 rounded-full bg-purple-100 items-center justify-center">
+                  <Ionicons name="people" size={18} color="#6B21A8" />
+                </View>
                 <Text className="text-gray-800 font-medium ml-3">View Members</Text>
               </View>
             </MenuOption>
-            <MenuOption onSelect={() => console.log('Info')}>
-              <View className="flex-row items-center py-2 px-1">
-                <Ionicons name="information-circle" size={22} color="#6B21A8" />
+            
+            <View className="border-t border-gray-100 my-1" />
+            
+            <MenuOption onSelect={() => Alert.alert('Coming Soon', 'This feature will be available soon!')}>
+              <View className="flex-row items-center py-3 px-2">
+                <View className="w-8 h-8 rounded-full bg-blue-100 items-center justify-center">
+                  <Ionicons name="information-circle" size={18} color="#3B82F6" />
+                </View>
                 <Text className="text-gray-800 font-medium ml-3">Group Info</Text>
+              </View>
+            </MenuOption>
+            
+            <View className="border-t border-gray-100 my-1" />
+            
+            <MenuOption onSelect={() => Alert.alert('Leave Group', 'Are you sure you want to leave this group?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Leave', style: 'destructive', onPress: () => router.back() }
+            ])}>
+              <View className="flex-row items-center py-3 px-2">
+                <View className="w-8 h-8 rounded-full bg-red-100 items-center justify-center">
+                  <Ionicons name="exit-outline" size={18} color="#EF4444" />
+                </View>
+                <Text className="text-red-500 font-medium ml-3">Leave Group</Text>
               </View>
             </MenuOption>
           </MenuOptions>

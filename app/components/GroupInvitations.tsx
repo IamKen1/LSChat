@@ -112,7 +112,7 @@ const GroupInvitations: React.FC<GroupInvitationsProps> = ({ onInvitationRespond
           >
             {invitations.map((invitation) => (
               <View 
-                key={invitation.group_id} 
+                key={`invitation-${invitation.group_id}`} // Add prefix to ensure uniqueness
                 className="mx-4 my-2 bg-white p-4 rounded-lg shadow-sm"
               >
                 <Text className="text-lg font-bold text-gray-800">
@@ -130,8 +130,9 @@ const GroupInvitations: React.FC<GroupInvitationsProps> = ({ onInvitationRespond
                   >
                     <Text className="text-gray-800">Decline</Text>
                   </TouchableOpacity>
+                  <View style={{ width: 8 }} /> {/* Replace mx-2 with explicit spacer */}
                   <TouchableOpacity
-                    className="px-4  mx-2 py-2 bg-[#6B21A8] rounded-lg"
+                    className="px-4 py-2 bg-[#6B21A8] rounded-lg"
                     onPress={() => handleInvitationResponse(invitation.group_id, 'accept')}
                   >
                     <Text className="text-white">Accept</Text>
