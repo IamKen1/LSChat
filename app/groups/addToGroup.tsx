@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../../config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Header from '../../src/components/common/Header';
+import UserAvatar from '../../src/components/common/UserAvatar';
 
 interface Group {
   group_id: number;
@@ -84,9 +85,11 @@ const AddToGroup = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4">
-        <Text className="text-white text-xl font-bold">Add {contactName} to Group</Text>
-      </LinearGradient>
+      <Header 
+        title={`Add ${contactName} to Group`}
+        showBackButton={true}
+      />
+      
       {fetchingGroups ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#6B21A8" />
@@ -101,8 +104,18 @@ const AddToGroup = () => {
                 onPress={() => handleAddToGroup(group.group_id)}
                 disabled={loading}
               >
-                <Text className="text-gray-800 font-bold">{group.name}</Text>
-                <Text className="text-gray-600">{group.description}</Text>
+                <View className="flex-row items-center">
+                  <UserAvatar 
+                    name={group.name} 
+                    size={40} 
+                    containerClassName="mr-3 bg-[#6B21A8]" 
+                    textClassName="text-white text-lg"
+                  />
+                  <View className="flex-1">
+                    <Text className="text-gray-800 font-bold">{group.name}</Text>
+                    <Text className="text-gray-600">{group.description}</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           ) : (

@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, SectionList
 import { API_BASE_URL } from '@/config'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { router } from 'expo-router'; // Add this import
+import { router } from 'expo-router'; 
+import UserAvatar from '../src/components/common/UserAvatar'; // Fix the import path
 
 interface Contact {
     id: string
@@ -229,9 +230,12 @@ const ContactLists = () => {
         >
             <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
-                    <View className="w-10 h-10 bg-purple-50 rounded-full items-center justify-center mr-3">
-                        <Text className="text-lg text-purple-800">{item.name[0].toUpperCase()}</Text>
-                    </View>
+                    <UserAvatar 
+                        name={item.name} 
+                        size={40} 
+                        containerClassName="mr-3 bg-[#6B21A8]" 
+                        textClassName="text-white text-lg"
+                    />
                     <View>
                         <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
                         <Text className="text-sm text-gray-600">{item.phone}</Text>
@@ -246,7 +250,7 @@ const ContactLists = () => {
                 )}
                 <TouchableOpacity
                     onPress={() =>
-                        router.push({ // Use `router` here
+                        router.push({
                             pathname: '/groups/addToGroup',
                             params: { contactId: item.id, contactName: item.name },
                         })
@@ -269,9 +273,12 @@ const ContactLists = () => {
             onPress={onPress}
             className="p-4 border-b border-gray-100 flex-row items-center"
         >
-            <View className="w-12 h-12 bg-purple-50 rounded-full items-center justify-center mr-4">
-                <Text className="text-xl text-purple-800">{contact.name[0].toUpperCase()}</Text>
-            </View>
+            <UserAvatar 
+                name={contact.name} 
+                size={48}
+                containerClassName="mr-4 bg-[#6B21A8]"
+                textClassName="text-white text-lg"
+            />
             <View className="flex-1">
                 <Text className="text-lg font-semibold text-gray-800">{contact.name}</Text>
                 <Text className="text-sm text-gray-500">{contact.phone}</Text>
@@ -317,9 +324,12 @@ const ContactLists = () => {
                                         )
                                     }}
                                 >
-                                    <View className="w-12 h-12 bg-purple-50 rounded-full items-center justify-center mb-2">
-                                        <Text className="text-xl text-purple-800">{request.name[0].toUpperCase()}</Text>
-                                    </View>
+                                    <UserAvatar 
+                                        name={request.name}
+                                        size={48}
+                                        containerClassName="mb-2 bg-[#6B21A8]"
+                                        textClassName="text-white text-lg" 
+                                    />
                                     <Text className="text-sm font-semibold text-gray-800">{request.name}</Text>
                                     <Text className="text-xs text-gray-600">{request.phone}</Text>
                                 </TouchableOpacity>

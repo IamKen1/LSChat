@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import UserAvatar from '../../src/components/common/UserAvatar';
 
 interface Group {
   group_id: number;
@@ -37,14 +38,6 @@ const GroupList = () => {
     fetchGroups();
   }, []);
 
-  const getInitials = (name: string) => {
-    return name.split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
   const renderGroupItem = ({ item }: { item: Group }) => (
     <TouchableOpacity
       key={item.group_id}
@@ -57,11 +50,12 @@ const GroupList = () => {
       }
     >
       <View className="flex-row items-center p-4">
-        <View className="w-16 h-16 rounded-full overflow-hidden mr-4">
-          <View className="w-full h-full bg-[#6B21A8] items-center justify-center">
-            <Text className="text-2xl font-bold text-white">{getInitials(item.name)}</Text>
-          </View>
-        </View>
+        <UserAvatar 
+          name={item.name} 
+          size={64} 
+          containerClassName="mr-4 bg-[#6B21A8]" 
+          textClassName="text-white text-xl font-bold"
+        />
         <View className="flex-1">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
@@ -123,6 +117,14 @@ const GroupList = () => {
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
       />
+      
+      {/* Add the floating action button */}
+      <TouchableOpacity
+        className="absolute bottom-4 right-4 w-[60px] h-[60] bg-[#6B21A8] rounded-full justify-center items-center shadow-lg"
+        onPress={() => router.push('/groups/createGroup')}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
     </View>
   );
 };

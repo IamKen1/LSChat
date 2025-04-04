@@ -4,6 +4,8 @@ import { API_BASE_URL } from '../../config'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'; 
+import UserAvatar from '../../src/components/common/UserAvatar';
+import Header from '../../src/components/common/Header';
 
 interface Contact {
     id: string;
@@ -58,11 +60,11 @@ function NewMessage() {
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FA]" style={{ paddingTop: StatusBar.currentHeight }}>
-            <LinearGradient
-                colors={['#6B21A8', '#3B0764']}
-                className="p-4 shadow-lg"
-            >
-                <Text className="text-white text-xl font-bold mb-4">New Message</Text>
+            <Header 
+                title="New Message"
+                showBackButton={true}
+            />
+            <View className="p-4">
                 <View className="flex-row items-center bg-white/90 rounded-xl p-2 shadow-sm">
                     <Text className="text-[#8E24AA] text-xl mx-2">🔍</Text>
                     <TextInput
@@ -73,7 +75,7 @@ function NewMessage() {
                         onChangeText={setSearchQuery}
                     />
                 </View>
-            </LinearGradient>
+            </View>
             <ScrollView className="flex-1 px-2">
                 {filteredContacts.map((contact) => (
                     <TouchableOpacity
@@ -86,11 +88,12 @@ function NewMessage() {
                             })
                         }
                     >
-                        <View className="w-12 h-12 bg-[#8E24AA]/10 rounded-full mr-4 items-center justify-center">
-                            <Text className="text-[#8E24AA] text-lg font-semibold">
-                                {contact.name.charAt(0).toUpperCase()}
-                            </Text>
-                        </View>
+                        <UserAvatar
+                            name={contact.name}
+                            size={48}
+                            containerClassName="mr-4 bg-[#6B21A8]"
+                            textClassName="text-white text-lg"
+                        />
                         <View className="flex-1">
                             <Text className="text-gray-800 font-semibold text-lg">{contact.name}</Text>
                             <Text className="text-gray-500">{contact.phone}</Text>
@@ -110,7 +113,6 @@ function NewMessage() {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
-
         </SafeAreaView>
     )
 }

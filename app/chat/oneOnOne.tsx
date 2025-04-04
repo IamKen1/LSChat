@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Text, NativeSyntheticEvent, TextInputKeyPressEventData, AppState, Image, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Text, AppState, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -9,10 +9,8 @@ import PubNub from 'pubnub';
 import { API_BASE_URL, PUBNUB_PUBLISH_KEY, PUBNUB_SUBSCRIBE_KEY } from '../../config';
 import { showLocalNotification } from '../../src/notifications/useNotification';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { FlashList } from '@shopify/flash-list';
 
-// Types
 interface Message {
   id: string;
   sender_id: string;
@@ -32,7 +30,6 @@ interface MessageItemProps {
   contactId: string | null;
 }
 
-// Format timestamp to readable time
 const formatTime = (dateString: string | undefined) => {
   try {
     if (!dateString) return '';
@@ -43,18 +40,17 @@ const formatTime = (dateString: string | undefined) => {
     const hour = parseInt(hours);
     const hour12 = hour % 12 || 12;
     const ampm = hour >= 12 ? 'PM' : 'AM';
-    const [year, month, day] = date.split('-');
-    return `${month}/${day}/${year} ${hour12}:${minutes} ${ampm}`;
+    return `${hour12}:${minutes} ${ampm}`;
   } catch (error) {
     return '';
   }
 };
-// Message bubble component
+
 const MessageItem: React.FC<MessageItemProps> = React.memo(({ item, contactId }) => {
   const isImageUrl = (url: string) => /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(url);
 
   const renderMessageContent = (message: string) => {
-    const parts = message.split(/\[(?:Image|File): (.+?)\]/); // Match both [Image: URL] and [File: URL]
+    const parts = message.split(/\[(?:Image|File): (.+?)\]/);
     return parts.map((part, index) => {
       if (isImageUrl(part)) {
         return (
@@ -101,25 +97,22 @@ export default function OneOnOneChat() {
   const params = useLocalSearchParams<{ contactId: string }>();
   const contactId = params.contactId;
   
-  // States
   const [contact, setContact] = React.useState<Contact | null>(null);
   const [messages, setMessages] = React.useState<Message[]>([]);
-  const [newMessage, setNewMessage] = React.useState('');
   const [pubnub, setPubnub] = React.useState<PubNub | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [isAtBottom, setIsAtBottom] = React.useState(true);
   const [selectedFile, setSelectedFile] = React.useState<{ uri: string; name?: string; type?: string } | null>(null);
-  const [inputContent, setInputContent] = React.useState<string>(''); // For text input
+  const [inputContent, setInputContent] = React.useState<string>('');
   const [loadingMessages, setLoadingMessages] = React.useState<boolean>(true);
   const [sendingMessage, setSendingMessage] = React.useState<boolean>(false);
   
-  // Refs
   const flatListRef = React.useRef<FlashList<Message>>(null);
   const appState = React.useRef(AppState.currentState);
   const lastMessageIdRef = React.useRef<string | null>(null);
   const isScreenActiveRef = React.useRef<boolean>(true);
+  const initialLoadRef = React.useRef(true);
   
-  // Get current user ID
   React.useEffect(() => {
     const getUserId = async () => {
       try {
@@ -134,7 +127,6 @@ export default function OneOnOneChat() {
     getUserId();
   }, []);
 
-  // Monitor app state
   React.useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       appState.current = nextAppState;
@@ -142,7 +134,6 @@ export default function OneOnOneChat() {
     return () => subscription.remove();
   }, []);
 
-  // Track screen active state
   React.useEffect(() => {
     isScreenActiveRef.current = true;
     return () => {
@@ -150,20 +141,17 @@ export default function OneOnOneChat() {
     };
   }, []);
 
-  // Fetch contact details
   React.useEffect(() => {
     if (contactId) {
       fetchContactDetails();
     }
   }, [contactId]);
 
-  // Initialize PubNub
   React.useEffect(() => {
     if (contact?.pubnub_channel) {
       initializePubNub();
-      // Set initialLoad to true before the first fetch
       initialLoadRef.current = true;
-      fetchChatHistory(contact.pubnub_channel, { skipMarkRead: true });
+      fetchChatHistory(contact.pubnub_channel);
     }
     
     return () => {
@@ -176,22 +164,13 @@ export default function OneOnOneChat() {
     };
   }, [contact]);
 
-  // PubNub message listener
   React.useEffect(() => {
     if (!pubnub || !contact?.pubnub_channel || !contact?.name || !userId) return;
 
     const handleMessage = async () => {
       try {
-        // Now we need to check who sent the message before deciding to mark as read
-        const currentMessages = [...messages];
+        await fetchChatHistory(contact.pubnub_channel);
         
-        // Fetch latest messages
-        await fetchChatHistory(contact.pubnub_channel, {
-          // Only skip marking if screen is not active
-          skipMarkRead: !isScreenActiveRef.current || appState.current !== 'active'
-        });
-        
-        // Show notification if app/screen not active and message is from contact
         if (!isScreenActiveRef.current || appState.current !== 'active') {
           if (messages.length > 0) {
             const latestMessage = messages[0];
@@ -222,16 +201,20 @@ export default function OneOnOneChat() {
   }, [pubnub, contact?.pubnub_channel, contact?.name, userId]);
 
   const initializePubNub = async () => {
-    const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
-    if (!userData.user) return;
+    try {
+      const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
+      if (!userData.user) return;
 
-    const pubnubInstance = new PubNub({
-      publishKey: PUBNUB_PUBLISH_KEY,
-      subscribeKey: PUBNUB_SUBSCRIBE_KEY,
-      userId: String(userData.user.user_id),
-    });
+      const pubnubInstance = new PubNub({
+        publishKey: PUBNUB_PUBLISH_KEY,
+        subscribeKey: PUBNUB_SUBSCRIBE_KEY,
+        userId: String(userData.user.user_id),
+      });
 
-    setPubnub(pubnubInstance);
+      setPubnub(pubnubInstance);
+    } catch (error) {
+      console.error('Error initializing PubNub:', error);
+    }
   };
 
   const fetchContactDetails = async () => {
@@ -258,21 +241,17 @@ export default function OneOnOneChat() {
     }
   };
 
-  // Only mark messages from other users as read, check for new unread messages from other users
   const markMessagesAsRead = async (token: string) => {
     try {
       const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
       if (!userData.user) return;
       
-      // Check if there are any unread messages from the contact
       const hasUnreadFromContact = messages.some(msg => 
-        msg.sender_id === contactId && // Message is from contact (not from us)
-        msg.sender_id !== userData.user.user_id // Double check it's not our message
+        msg.sender_id === contactId &&
+        msg.sender_id !== userData.user.user_id
       );
       
-      // Only make the API call if there are messages to mark as read
       if (hasUnreadFromContact) {
-        console.log("Marking messages as read that are from contact:", contactId);
         await fetch(`${API_BASE_URL}/api/update-chat-read`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -287,22 +266,14 @@ export default function OneOnOneChat() {
     }
   };
 
-  // Track initial load to avoid marking on first render
-  const initialLoadRef = React.useRef(true);
-
-  // This now handles when to mark messages
-  const fetchChatHistory = async (
-    token: string,
-    options: { skipMarkRead?: boolean; isAfterSend?: boolean } = {}
-  ): Promise<boolean> => {
+  const fetchChatHistory = async (token: string): Promise<boolean> => {
     setLoadingMessages(true);
     try {
-      console.log('Fetching chat history for token:', token); // Debug log
       const response = await fetch(`${API_BASE_URL}/api/chatMessages/${token}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error fetching chat history:', response.status, errorText); // Debug log
+        console.error('Error fetching chat history:', response.status, errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -317,7 +288,6 @@ export default function OneOnOneChat() {
 
       const reversed = mappedMessages.reverse();
 
-      // Check if we have new messages
       const hasNewMessages =
         reversed.length > 0 &&
         (lastMessageIdRef.current === null || reversed[0].id !== lastMessageIdRef.current);
@@ -328,83 +298,77 @@ export default function OneOnOneChat() {
 
       setMessages(reversed);
 
-      // Skip marking messages as read in these cases:
-      if (
-        !options.skipMarkRead &&
-        !options.isAfterSend &&
-        !initialLoadRef.current &&
-        userId &&
-        isScreenActiveRef.current // Only mark as read if screen is active
-      ) {
+      // Mark messages as read only if screen is active and not first load
+      if (!initialLoadRef.current && userId && isScreenActiveRef.current) {
         await markMessagesAsRead(token);
       }
 
-      // After the first load, set initialLoad to false
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
       }
 
       return hasNewMessages;
     } catch (error) {
-      console.error('Error fetching chat history:', error); // Debug log
+      console.error('Error fetching chat history:', error);
       return false;
     } finally {
       setLoadingMessages(false);
     }
   };
 
- 
-  
   const sendMessage = async () => {
-    if (!inputContent.trim() && !selectedFile) return; // Ensure there's either text or a file
+    // Validate input - must have either text or a file
+    if (!inputContent.trim() && !selectedFile) return; 
+    
+    // Make sure we're connected
     if (!pubnub || !contact?.pubnub_channel) {
-      console.error('PubNub or contact channel is not initialized');
+      Alert.alert('Error', 'Connection not initialized. Please try again.');
       return;
     }
   
+    // Set sending state
     setSendingMessage(true);
+    
     try {
       const userData = JSON.parse(await AsyncStorage.getItem('userSession') || '{}');
       if (!userData.user) throw new Error('User session not found');
   
+      // Create form data
       const formData = new FormData();
       formData.append('user_id', userData.user.user_id);
       formData.append('token', contact.pubnub_channel);
   
+      // Add file if selected
       if (selectedFile) {
-        console.log('Uploading file message:', selectedFile.uri); // Debug log
-        const fileInfo = await FileSystem.getInfoAsync(selectedFile.uri);
-        if (!fileInfo.exists) throw new Error('File does not exist');
-  
         formData.append('file', {
           uri: selectedFile.uri,
-          name: selectedFile.name || selectedFile.uri.split('/').pop() || 'file',
           type: selectedFile.type || 'application/octet-stream',
+          name: selectedFile.name || selectedFile.uri.split('/').pop() || 'file'
         } as any);
       }
   
+      // Add text content if any
       if (inputContent.trim()) {
         formData.append('message_content', inputContent.trim());
       }
-  
-      // Make a single API call to send the message
+      
+      // Send the message to the server
       const response = await fetch(`${API_BASE_URL}/api/sendMessage`, {
         method: 'POST',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'multipart/form-data',
         },
         body: formData,
       });
   
       if (!response.ok) {
-        const result = await response.json();
-        console.error('Error sending message:', result); // Debug log
-        throw new Error(result.error || 'Failed to send message');
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error('Server error: ' + (errorText || response.statusText));
       }
-  
-      console.log('Message sent successfully'); // Debug log
-  
-      // Trigger PubNub notification
+      
+      // Notify via PubNub
       await pubnub.publish({
         channel: contact.pubnub_channel,
         message: {
@@ -413,56 +377,49 @@ export default function OneOnOneChat() {
         },
       });
   
-      // Clear input and file after sending
+      // Clear input fields
       setInputContent('');
       setSelectedFile(null);
-      await fetchChatHistory(contact.pubnub_channel, { skipMarkRead: true });
-  
+      
+      // Refresh the message list
+      await fetchChatHistory(contact.pubnub_channel);
+      
+      // Scroll to bottom if we were at bottom
       if (isAtBottom) {
         setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     } finally {
+      // Always reset sending state when done
       setSendingMessage(false);
     }
   };
   
   const pickFile = async () => {
     try {
-      console.log('Opening file picker...');
-      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      const result = await DocumentPicker.getDocumentAsync({ 
+        type: '*/*', 
+        copyToCacheDirectory: false
+      });
   
       if (result.assets && result.assets.length > 0) {
-        const file = result.assets[0]; 
+        const file = result.assets[0];
         if (file.uri) {
-          console.log('File selected:', file); 
-          setSelectedFile({ uri: file.uri, name: file.name, type: file.mimeType }); 
+          setSelectedFile({ uri: file.uri, name: file.name, type: file.mimeType });
         } else {
-          console.error('No valid file URI found in assets:', result); 
-          alert('Failed to select a file. Please try again.');
+          Alert.alert('Error', 'Failed to select a file. Please try again.');
         }
-      } else if (result.canceled) {
-        console.log('File selection canceled by the user');
-        alert('File selection was canceled. Please try again.');
-      } else {
-        console.error('Unexpected result from DocumentPicker:', result);
-        alert('Failed to select a file. Please try again.');
       }
     } catch (error) {
-      console.error('Error picking file:', error); 
-      alert('An error occurred while selecting a file. Please ensure the file picker is working correctly.');
+      console.error('Error picking file:', error);
+      Alert.alert('Error', 'An error occurred while selecting a file.');
     }
   };
 
   const handleScroll = (event: any) => {
     setIsAtBottom(event.nativeEvent.contentOffset.y > -20);
-  };
-
-  const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    if (e.nativeEvent.key === 'Enter') {
-      sendMessage();
-    }
   };
 
   return (
@@ -503,7 +460,7 @@ export default function OneOnOneChat() {
         ) : (
           <View className="flex-1">
             <FlashList
-              ref={flatListRef} 
+              ref={flatListRef}
               data={messages}
               estimatedItemSize={100}
               keyExtractor={item => item.id}
@@ -555,7 +512,7 @@ export default function OneOnOneChat() {
             />
           </View>
           <TouchableOpacity 
-            onPress={() => sendMessage()} 
+            onPress={sendMessage} 
             className="ml-3 p-2"
             disabled={sendingMessage}
           >

@@ -3,7 +3,10 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../config';
-import { Ionicons } from '@expo/vector-icons';
+import Header from '../../src/components/common/Header';
+import Loading from '../../src/components/common/Loading';
+import UserAvatar from '../../src/components/common/UserAvatar';
+import EmptyState from '../../src/components/common/EmptyState';
 
 interface Member {
   user_id: number;
@@ -35,9 +38,7 @@ const Members = () => {
 
   const renderMember = ({ item }: { item: Member }) => (
     <View className="flex-row items-center p-4 border-b border-gray-200">
-      <View className="w-12 h-12 rounded-full bg-[#6B21A8] items-center justify-center mr-4">
-        <Text className="text-lg font-bold text-white">{item.name.charAt(0).toUpperCase()}</Text>
-      </View>
+      <UserAvatar name={item.name} size={48} containerClassName="mr-4" />
       <View className="flex-1">
         <Text className="text-gray-800 font-semibold text-lg">{item.name}</Text>
       </View>
@@ -52,23 +53,15 @@ const Members = () => {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#6B21A8" />
-        </View>
+        <Header title={groupName ? `${groupName} - Members` : 'Group Members'} />
+        <Loading />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="bg-[#6B21A8] p-4 flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="p-2">
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text className="text-white text-xl font-bold ml-4">
-          {groupName ? `${groupName} - ` : ''}Group Members
-        </Text>
-      </View>
+      <Header title={groupName ? `${groupName} - Members` : 'Group Members'} />
       
       <View className="p-4 bg-white">
         <Text className="text-sm text-gray-500">{members.length} members</Text>
@@ -82,10 +75,11 @@ const Members = () => {
           contentContainerStyle={{ paddingBottom: 16 }}
         />
       ) : (
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="people" size={64} color="#d1d5db" />
-          <Text className="text-xl font-semibold text-gray-400 mt-4">No members found</Text>
-        </View>
+        <EmptyState 
+          iconName="people" 
+          title="No members found"
+          message="This group doesn't have any members yet."
+        />
       )}
     </SafeAreaView>
   );

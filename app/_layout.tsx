@@ -7,6 +7,7 @@ import '../assets/global.css';
 import * as Notifications from 'expo-notifications';
 import { router } from "expo-router";
 import { MenuProvider } from 'react-native-popup-menu';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayout() {
   useEffect(() => {
@@ -34,17 +35,19 @@ function RootLayout() {
   }, []);
   
   return (
-    <MenuProvider>
-      <View className="flex-1 bg-secondary">
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'fade',
-          }}
-        />
-      </View>
-    </MenuProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <MenuProvider>
+        <View className="flex-1 bg-secondary">
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+            }}
+          />
+        </View>
+      </MenuProvider>
+    </GestureHandlerRootView>
   );
 }
 

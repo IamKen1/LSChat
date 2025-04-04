@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../config';
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
+import Header from '../../src/components/common/Header';
+import Loading from '../../src/components/common/Loading';
 
 const CreateGroup = () => {
   const [groupName, setGroupName] = useState('');
@@ -56,9 +58,8 @@ const CreateGroup = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <LinearGradient colors={['#6B21A8', '#3B0764']} className="p-4">
-        <Text className="text-white text-xl font-bold">Create Group</Text>
-      </LinearGradient>
+      <Header title="Create Group" showBackButton={true} />
+      
       <View className="p-4">
         <Text className="text-gray-700 font-semibold mb-2">Group Name</Text>
         <TextInput
@@ -80,7 +81,11 @@ const CreateGroup = () => {
           onPress={handleCreateGroup}
           disabled={loading}
         >
-          <Text className="text-white text-center font-bold">Create Group</Text>
+          {loading ? (
+            <Loading fullScreen={false} message="" />
+          ) : (
+            <Text className="text-white text-center font-bold">Create Group</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
